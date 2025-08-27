@@ -100,13 +100,11 @@ int nesynth_num_notes(NESynthPattern* pattern, NESynthNoteType type);
 NESynthNote* nesynth_get_note(NESynthPattern* pattern, NESynthNoteType type, int index);
 NESynthNote* nesynth_insert_note(NESynthPattern* pattern, NESynthNoteType type, NESynthInstrument* instrument, float base_note, float start, float length);
 void nesynth_delete_note(NESynthNote* note);
-void nesynth_move_note(NESynthNote* note, float position);
-void nesynth_resize_note(NESynthNote* note, float length);
 float* nesynth_base_note(NESynthNote* note);
 float* nesynth_slide_note(NESynthNote* note);
 bool* nesynth_attack_note(NESynthNote* note);
-float nesynth_note_start(NESynthNote* note);
-float nesynth_note_length(NESynthNote* note);
+float* nesynth_note_start(NESynthNote* note);
+float* nesynth_note_length(NESynthNote* note);
 NESynthInstrument** nesynth_note_instrument(NESynthNote* note);
 
 int nesynth_nodetable_insert(NESynthNodeTable* node_table, float position, float value);

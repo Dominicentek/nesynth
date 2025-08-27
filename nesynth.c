@@ -61,7 +61,13 @@ struct NESynthChannel {
         float phase;
         float attack;
         NESynthNote* prev_note;
-        float note_values[3];
+        struct {
+            float value;
+            float prev_pos;
+            int curr_pattern;
+            NESynthLinkedList* cursor;
+            NESynthNote* curr_note;
+        } notes[3];
     } state;
 };
 
@@ -416,7 +422,7 @@ NESynthChannel* nesynth_add_channel(NESynthSong* song, NESynthChannelType type) 
     channel->type = type;
     channel->patterns = linkedlist_create();
     channel->pattern_layout = calloc(sizeof(void*), song->length);
-    channel->state.note_values[NESynthNoteType_Volume] = 1;
+    channel->state.notes[NESynthNoteType_Volume].value = 1;
     linkedlist_add(song->channels, channel);
     return channel;
 }
@@ -491,14 +497,6 @@ NESynthNote* nesynth_insert_note(NESynthPattern* pattern, NESynthNoteType type, 
     note->slide_note = base_note;
     note->attack = true;
     note->type = type;
-    linkedlist_foreach(pattern->notes[type], {
-        NESynthNote* curr_note = curr;
-        if (curr_note->start < start && curr_note->start + curr_note->length >= start) curr_note->length = start - curr_note->start;
-        if (curr_note->start >= start && start + length >= curr_note->start + curr_note->length) {
-            nesynth_destroy_note(curr_note);
-            linkedlist_delete();
-        }
-    });
     linkedlist_add_sorted(pattern->notes[type], note, (void*)compare_notes);
     return note;
 }
@@ -528,12 +526,12 @@ bool* nesynth_attack_note(NESynthNote* note) {
     return &note->attack;
 }
 
-float nesynth_note_start(NESynthNote* note) {
-    return note->start;
+float* nesynth_note_start(NESynthNote* note) {
+    return &note->start;
 }
 
-float nesynth_note_length(NESynthNote* note) {
-    return note->length;
+float* nesynth_note_length(NESynthNote* note) {
+    return &note->length;
 }
 
 NESynthInstrument** nesynth_note_instrument(NESynthNote* note) {
@@ -798,22 +796,36 @@ static inline float nesynth_apply_noise_correction(float midi) {
     return tone + (octave + 1) * NESYNTH_EDO;
 }
 
-static inline NESynthNote* nesynth_get_note_value(NESynthChannel* channel, NESynthPattern* pattern, NESynthNoteType type, float pos, float* out, bool noise_correct) {
-    *out = channel->state.note_values[type];
-    NESynthNote* note = NULL;
-    linkedlist_foreach(pattern->notes[type], {
-        NESynthNote* curr_note = curr;
-        if (pos >= curr_note->start && pos < curr_note->start + curr_note->length) {
-            note = curr_note;
-            break;
+static inline NESynthNote* nesynth_get_note_value(NESynthChannel* channel, NESynthPattern* pattern, int pattern_index, NESynthNoteType type, float pos, float* out, bool noise_correct) {
+    *out = channel->state.notes[type].value;
+    if (linkedlist_empty(pattern->notes[type])) return NULL;
+    if (pos < channel->state.notes[type].prev_pos) channel->state.notes[type].cursor = NULL;
+    bool cursor_valid = channel->state.notes[type].cursor;
+    NESynthLinkedList* curr = cursor_valid ? channel->state.notes[type].cursor : pattern->notes[type];
+    while (true) {
+        if (cursor_valid) {
+            NESynthNote* next = curr->next->item;
+            if (pos < next->start || curr->next == pattern->notes[type]) break;
+            curr = curr->next;
         }
-    });
-    if (note) {
-        float base  = noise_correct ? nesynth_apply_noise_correction(note->base_note)  : note->base_note;
-        float slide = noise_correct ? nesynth_apply_noise_correction(note->slide_note) : note->slide_note;
-        *out = (slide - base) * ((pos - note->start) / note->length) + base;
+        channel->state.notes[type].curr_pattern = pattern_index;
+        channel->state.notes[type].curr_note = curr->item;
+        channel->state.notes[type].cursor = curr;
+        cursor_valid = true;
     }
-    channel->state.note_values[type] = *out;
+    NESynthNote* note = channel->state.notes[type].curr_note;
+    if (note) {
+        float start = note->start + channel->state.notes[type].curr_pattern * 4;
+        float frame = pos + pattern_index * 4;
+        if (frame >= start && frame < start + note->length) {
+            float base  = noise_correct ? nesynth_apply_noise_correction(note->base_note)  : note->base_note;
+            float slide = noise_correct ? nesynth_apply_noise_correction(note->slide_note) : note->slide_note;
+            *out = (slide - base) * ((frame - start) / note->length) + base;
+        }
+        else note = NULL;
+    }
+    channel->state.notes[type].value = *out;
+    channel->state.notes[type].prev_pos = pos;
     return note;
 }
 
@@ -862,15 +874,15 @@ void nesynth_get_samples(NESynth* synth, NESynthSample* samples, int num_samples
             NESynthPattern* pattern = channel->pattern_layout[pattern_index];
             if (!pattern) linkedlist_continue();
             float pitch = 0, mod_volume = 1, mod_pitch = 0;
-            NESynthNote* note = nesynth_get_note_value(channel, pattern, NESynthNoteType_Instrument, pos, &pitch, channel->type == NESynthChannelType_Noise);
+            NESynthNote* note = nesynth_get_note_value(channel, pattern, pattern_index, NESynthNoteType_Instrument, pos, &pitch, channel->type == NESynthChannelType_Noise);
             if (!note) linkedlist_continue();
             if (channel->state.prev_note != note && note->attack) {
                 channel->state.prev_note = note;
                 channel->state.attack = note->start + pattern_index * 4;
                 if (channel->type == NESynthChannelType_Waveform) channel->state.phase = 0;
             }
-            nesynth_get_note_value(channel, pattern, NESynthNoteType_Volume, pos, &mod_volume, false);
-            nesynth_get_note_value(channel, pattern, NESynthNoteType_Pitch,  pos, &mod_pitch,  false);
+            nesynth_get_note_value(channel, pattern, pattern_index, NESynthNoteType_Volume, pos, &mod_volume, false);
+            nesynth_get_note_value(channel, pattern, pattern_index, NESynthNoteType_Pitch,  pos, &mod_pitch,  false);
             float seconds = fmaxf((synth->position - channel->state.attack) / synth->curr_song->bpm * 60, 0);
             float instrument_volume = nesynth_compute_nodetable(note->instrument->volume, seconds);
             float instrument_pitch  = nesynth_compute_nodetable(note->instrument->pitch,  seconds);
