@@ -307,7 +307,7 @@ int nesynth_num_instruments(NESynth* synth) {
 }
 
 NESynthInstrument* nesynth_add_instrument(NESynth* synth) {
-    NESynthInstrument* instrument = calloc(sizeof(NESynth), 1);
+    NESynthInstrument* instrument = calloc(sizeof(NESynthInstrument), 1);
     instrument->parent = synth;
     instrument->tune = NESYNTH_CONCERT_PITCH;
     instrument->volume = nesynth_create_nodetable(1);
