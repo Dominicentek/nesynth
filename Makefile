@@ -1,6 +1,5 @@
 include config.mk
 
-task = $(info ::setmsg $(1))
 is_true = $(if $(filter-out 0,$(1)),1,)
 define sources
 	$(eval $(2)_SRC := $(1))
@@ -27,21 +26,21 @@ endif
 all: $(LIBRARY_TARGET) $(if $(call is_true,$(FRONTEND_ENABLE)),$(FRONTEND_TARGET),)
 
 clean:
-	$(call task,Cleaning up)
+	::setmsg Cleaning up
 	rm -rf $(LIBRARY_TARGET) $(FRONTEND_TARGET) $(BUILD)
 
 -include $(NESYNTH_OBJ:.o=.d) $(FRONTEND_OBJ:.o=.d)
 
 $(BUILD)/%.o: %.c
-	$(call task,Compiling $<)
+	::setmsg Compiling $<
 	mkdir -p $(dir $@)
 	::compile -c $(CFLAGS) -o $@ $<
 	::compile $(CFLAGS) -MM -MT $@ $< -o $(@:.o=.d)
 
 $(FRONTEND_TARGET): $(FRONTEND_OBJ) $(LIBRARY_TARGET)
-	$(call task,Linking frontend)
+	::setmsg Linking frontend
 	::compile $(FRONTEND_OBJ) $(if $(call is_true,$(FRONTEND_LINK_STATICALLY)),$(NESYNTH_OBJ),-L. -l$(NAME)) $(LFLAGS_FRONTEND) -o $@
 
 $(LIBRARY_TARGET): $(NESYNTH_OBJ)
-	$(call task,Linking library)
+	::setmsg Linking library
 	::compile $(NESYNTH_OBJ) $(LFLAGS) -shared -o $@

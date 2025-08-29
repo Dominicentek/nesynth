@@ -56,7 +56,10 @@ fi
 
 trap 'error' ERR
 
-while IFS= read -r cmd; do
-    $cmd
-done <<< "$BUILD"
-::printprogress "Build successful\n"
+TIMEFORMAT="Build took %1R seconds"
+time {
+    while IFS= read -r cmd; do
+        $cmd
+    done <<< "$BUILD"
+    ::printprogress "Build successful\n"
+}
