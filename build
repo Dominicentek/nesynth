@@ -1,0 +1,62 @@
+#!/bin/bash
+
+BUILD=$(make $@ -j$(nproc) --dry-run --silent)
+TASKS=$(echo $BUILD | grep -o ::setmsg | wc -l)
+COUNTER=0
+
+if [[ "$TASKS" == "0" ]]; then
+    exit 0
+fi
+
+::printprogress() {
+    WIDTH=20
+    THRESHOLD=$((COUNTER * WIDTH / TASKS))
+    printf "\r\e[2K[$COUNTER/$TASKS] "
+    for i in $(seq 1 $WIDTH); do
+        if [ $i -le $THRESHOLD ]; then
+            echo -ne "#"
+        else
+            echo -ne "."
+        fi
+    done
+    echo -ne " $((COUNTER * 100 / TASKS))% $@"
+}
+
+::setmsg() {
+    COUNTER=$((COUNTER + 1))
+    ::printprogress $@
+}
+
+::error() {
+    ::printprogress "Build failed"
+    echo ""
+    exit 1
+}
+
+::compile() {
+    trap - ERR
+    JSON=$(gcc $@ -fdiagnostics-format=json 2> >(cat))
+    if ! jq <<< $JSON > /dev/null 2>&1; then
+        printf "\r\e[2K"
+        echo "$JSON"
+        ::error
+    fi
+    jq -cr '.[]' <<< $JSON | ( while read -r diag; do
+        if jq -r '.kind' <<< $diag | grep "error" > /dev/null; then
+            HAS_ERRORS=1
+            jq -r '"\r\u001B[31m\u001B[1m\(if .locations[0] then (.locations[0].caret | "(\(.file) \(.line):\(."display-column"))") else "ERR" end)\u001B[0m \(.message)"' <<< $diag
+        fi
+    done
+    exit $HAS_ERRORS )
+    if [[ $? == 1 ]]; then
+        ::error
+    fi
+    trap 'error' ERR
+}
+
+trap 'error' ERR
+
+while IFS= read -r cmd; do
+    $cmd
+done <<< "$BUILD"
+::printprogress "Build successful\n"
