@@ -7,5 +7,5 @@ FRONTEND = frontend
 BUILD = obj
 LIBS = sdl3
 
-CFLAGS = -I. -Isrc -fPIC
+CFLAGS = -I. -Ifrontend -fPIC -g
 LFLAGS = -lm
