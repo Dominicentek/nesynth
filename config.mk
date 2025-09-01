@@ -9,3 +9,6 @@ LIBS = sdl3
 
 CFLAGS = -I. -Ifrontend -fPIC -g
 LFLAGS = -lm
+
+IMG_SOURCE = images
+IMG_TARGET = $(FRONTEND)/images

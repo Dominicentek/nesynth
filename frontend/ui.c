@@ -1,10 +1,13 @@
 #include <SDL3/SDL.h>
 
+#include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_render.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "ui.h"
 #include "tiler.h"
+#include "imageloader.h"
 
 typedef enum {
     UINodeType_Tile,
@@ -335,10 +338,72 @@ void ui_draw_line(float x1, float y1, float x2, float y2, int color) {
     SDL_RenderLine(curr_renderer, x1 + curr_node->x, y1 + curr_node->y, x2 + curr_node->x, y2 + curr_node->y);
 }
 
+void ui_image(const char* path, float x, float y, float w, float h) {
+    ui_image_cropped(path, x, y, w, h, AUTO, AUTO, AUTO, AUTO);
+}
+
+void ui_image_cropped(const char* path, float dx, float dy, float dw, float dh, float sx, float sy, float sw, float sh) {
+    Image* img = img_get(path);
+    if (!img) return;
+    if (isnan(dw)) dw = img->width;
+    if (isnan(dh)) dh = img->height;
+    ui_resolve_auto(&sx, &sw, img->width);
+    ui_resolve_auto(&sy, &sh, img->height);
+    ui_resolve_auto(&dx, &dw, sw);
+    ui_resolve_auto(&dy, &dh, sh);
+    dx += curr_node->x;
+    dy += curr_node->y;
+    SDL_FRect dst = { .x = dx, .y = dy, .w = dw, .h = dh };
+    SDL_FRect src = { .x = sx, .y = sy, .w = sw, .h = sh };
+    SDL_RenderTexture(curr_renderer, img_generate_texture(curr_renderer, img), &src, &dst);
+}
+
+static void ui_render_text(float x, float y, char* text) {
+    SDL_Texture* font = img_get_texture(curr_renderer, "images/font.png");
+    float off = 0;
+    while (*text != 0) {
+        int X = *text % 16;
+        int Y = *text / 16 - 2;
+        if (Y >= 0 && Y < 6) {
+            SDL_FRect src = { .x = X * 6, .y = Y * 8, .w = 6, .h = 8 };
+            SDL_FRect dst = { .x = x + off + curr_node->x, .y = y + curr_node->y, .w = 6, .h = 8 };
+            SDL_RenderTexture(curr_renderer, font, &src, &dst);
+            off += 6;
+        }
+        text++;
+    }
+}
+
 void ui_text(float x, float y, const char* fmt, ...) {
-    
+    va_list args1, args2;
+    va_start(args1, fmt);
+    va_copy(args2, args1);
+    int size = vsnprintf(NULL, 0, fmt, args1);
+    char* str = malloc(size + 1);
+    vsprintf(str, fmt, args2);
+    va_end(args1);
+    va_end(args2);
+    ui_render_text(x, y, str);
+    free(str);
 }
 
 void ui_text_positioned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, const char* fmt, ...) {
-    
+    ui_resolve_auto(&x, &w, curr_node->w);
+    ui_resolve_auto(&y, &h, curr_node->h);
+    if (isnan(anchor_x)) anchor_x = 0.5;
+    if (isnan(anchor_y)) anchor_y = 0.5;
+    if (isnan(off_x)) off_x = 0;
+    if (isnan(off_y)) off_y = 0;
+    va_list args1, args2;
+    va_start(args1, fmt);
+    va_copy(args2, args1);
+    int size = vsnprintf(NULL, 0, fmt, args1);
+    char* str = malloc(size + 1);
+    vsprintf(str, fmt, args2);
+    va_end(args1);
+    va_end(args2);
+    x += (w - size * 6) * anchor_x + off_x;
+    y += (h -        8) * anchor_y + off_y;
+    ui_render_text(x, y, str);
+    free(str);
 }

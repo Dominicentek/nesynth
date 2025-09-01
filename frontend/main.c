@@ -1,16 +1,7 @@
 #include <SDL3/SDL.h>
 
 #include "ui.h"
-#include "tiler.h"
-#include "windows/windows.h"
-
-static void debug_rect(SDL_Renderer* renderer, int node, int r, int g, int b) {
-    SDL_FRect rect;
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, r, g, b, 127);
-    tiler_bounds(node, &rect.x, &rect.y, &rect.w, &rect.h);
-    SDL_RenderFillRect(renderer, &rect);
-}
+#include "windows.h"
 
 int main() {
     SDL_Window* window;
