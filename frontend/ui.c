@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_render.h>
 #include <stdlib.h>
@@ -21,6 +22,8 @@ typedef struct UIWindowInfo {
     UIWindow window;
     float zoom;
     float scroll_x, scroll_y;
+    float drag_x, drag_y;
+    bool dragging;
 } UIWindowInfo;
 
 typedef struct UIEvent {
@@ -40,6 +43,7 @@ typedef struct UINode {
     UIFlow flow;
     float x, y, w, h;
     float cursor_x, cursor_y, cursor_max;
+    float cursor_offset_x, cursor_offset_y;
     int tiler_id;
 } UINode;
 
@@ -210,23 +214,48 @@ void ui_window(UIWindow window) {
 
 void ui_scrollwheel() {
     if (curr_node->type != UINodeType_Window) return;
-    
+    UIEvent* curr = events;
+    while (curr && curr->next) {
+        if (curr->event.type == SDL_EVENT_MOUSE_WHEEL) {
+            curr_node->info->scroll_y -= curr->event.wheel.y * 16;
+        }
+        curr = curr->next;
+    }
 }
 
 void ui_middleclick() {
     if (curr_node->type != UINodeType_Window) return;
-    
+    UIEvent* curr = events;
+    while (curr && curr->next) {
+        if ((
+            curr->event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
+            curr->event.type == SDL_EVENT_MOUSE_BUTTON_UP
+        ) && curr->event.button.button == SDL_BUTTON_MIDDLE) {
+            curr_node->info->dragging = curr->event.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+            curr_node->info->drag_x = curr->event.button.x;
+            curr_node->info->drag_y = curr->event.button.y;
+        }
+        if (curr->event.type == SDL_EVENT_MOUSE_MOTION && curr_node->info->dragging) {
+            curr_node->info->scroll_x -= curr->event.motion.x - curr_node->info->drag_x;
+            curr_node->info->scroll_y -= curr->event.motion.y - curr_node->info->drag_y;
+            curr_node->info->drag_x = curr->event.motion.x;
+            curr_node->info->drag_y = curr->event.motion.y;
+        }
+        curr = curr->next;
+    }
 }
 
 void ui_item(float width, float height) {
     if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow) return;
-    ui_push_node(UINodeType_Item, curr_node->x + curr_node->cursor_x, curr_node->y + curr_node->cursor_y, width, height);
+    width -= 1; height -= 1;
+    ui_push_node(UINodeType_Item, curr_node->x + curr_node->cursor_x + curr_node->cursor_offset_x, curr_node->y + curr_node->cursor_y + curr_node->cursor_offset_y, width, height);
     ui_push_clip();
 }
 
 void ui_subwindow(float width, float height) {
     if (curr_node->type != UINodeType_Window) return;
-    ui_push_node(UINodeType_Subwindow, curr_node->x + curr_node->cursor_x, curr_node->y + curr_node->cursor_y, width, height);
+    width -= 1; height -= 1;
+    ui_push_node(UINodeType_Subwindow, curr_node->x + curr_node->cursor_x + curr_node->cursor_offset_x, curr_node->y + curr_node->cursor_y + curr_node->cursor_offset_y, width, height);
     ui_push_clip();
 }
 
@@ -263,18 +292,52 @@ void ui_end() {
     }
 }
 
-void ui_setup_offset(bool h, bool v) {
-    if (curr_node->type != UINodeType_Window || curr_node->type != UINodeType_Subwindow) return;
-    curr_node->cursor_x = -curr_node->info->scroll_x;
-    curr_node->cursor_y = -curr_node->info->scroll_y;
+void ui_limit_scroll(float min_x, float min_y, float max_x, float max_y) {
+    if (curr_node->type != UINodeType_Window) return;
+    float prev_x = curr_node->info->scroll_x;
+    float prev_y = curr_node->info->scroll_y;
+    max_x -= curr_node->w;
+    max_y -= curr_node->h;
+    if (max_x < curr_node->info->scroll_x) curr_node->info->scroll_x = max_x;
+    if (max_y < curr_node->info->scroll_y) curr_node->info->scroll_y = max_y;
+    if (min_x > curr_node->info->scroll_x) curr_node->info->scroll_x = min_x;
+    if (min_y > curr_node->info->scroll_y) curr_node->info->scroll_y = min_y;
+    curr_node->info->drag_x -= curr_node->info->scroll_x - prev_x;
+    curr_node->info->drag_y -= curr_node->info->scroll_y - prev_y;
 }
 
-void ui_update_zoom(float offset_x, float offset_y) {
+void ui_setup_offset(bool h, bool v) {
+    if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow) return;
+    curr_node->cursor_offset_x = -curr_node->info->scroll_x * h;
+    curr_node->cursor_offset_y = -curr_node->info->scroll_y * v;
+}
+
+void ui_update_zoom(float offset_x) {
     if (curr_node->type != UINodeType_Window) return;
+    UIEvent* curr = events;
+    float min = powf(2, -4);
+    float max = powf(2,  4);
+    float prev = curr_node->info->zoom;
+    float x = curr_node->x + offset_x;
+    float pos = NAN;
+    while (curr && curr->next) {
+        if (curr->event.type == SDL_EVENT_MOUSE_WHEEL) {
+            pos = curr->event.wheel.mouse_x - x;
+            curr_node->info->zoom *= powf(2, curr->event.wheel.y);
+            if (curr_node->info->zoom < min) curr_node
+                ->info->zoom = min;
+            if (curr_node->info->zoom > max) curr_node->info->zoom = max;
+        }
+        curr = curr->next;
+    }
+    if (!isnan(pos)) {
+        float f = curr_node->info->zoom / prev;
+        curr_node->info->scroll_x = (curr_node->info->scroll_x + pos) * (curr_node->info->zoom / prev) - pos;
+    }
 }
 
 float ui_zoom() {
-    if (curr_node->type != UINodeType_Window || curr_node->type != UINodeType_Subwindow || curr_node->type != UINodeType_Item) return 0;
+    if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow && curr_node->type != UINodeType_Item) return 0;
     return curr_node->info->zoom;
 }
 
@@ -402,8 +465,8 @@ void ui_text_positioned(float x, float y, float w, float h, float anchor_x, floa
     vsprintf(str, fmt, args2);
     va_end(args1);
     va_end(args2);
-    x += (w - size * 6) * anchor_x + off_x;
-    y += (h -        8) * anchor_y + off_y;
+    x += roundf((w - size * 6) * anchor_x + off_x);
+    y += roundf((h -        8) * anchor_y + off_y);
     ui_render_text(x, y, str);
     free(str);
 }

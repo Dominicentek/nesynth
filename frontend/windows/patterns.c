@@ -5,7 +5,8 @@
 
 void window_patterns(float w, float h) {
     ui_middleclick();
-    ui_update_zoom(128, 16);
+    ui_update_zoom(128);
+    ui_limit_scroll(0, 0, ui_zoom() * 160 * DEBUG_NUM_PATTERNS + 128, 64 * DEBUG_NUM_CHANNELS + 16);
     ui_setup_offset(false, false);
     ui_item(128, 16);
         ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
@@ -14,8 +15,9 @@ void window_patterns(float w, float h) {
         ui_setup_offset(true, false);
         for (int i = 0; i < DEBUG_NUM_PATTERNS; i++) {
             int color = i % 2 ? 32 : 48;
-            ui_item(160, 16);
+            ui_item(ui_zoom() * 160, 16);
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(color, color, color));
+                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, "%d", i + 1);
             ui_end();
         }
     ui_end();
@@ -35,7 +37,7 @@ void window_patterns(float w, float h) {
         for (int i = 0; i < DEBUG_NUM_PATTERNS; i++) {
             int color = i % 2 ? 32 : 48;
             for (int i = 0; i < DEBUG_NUM_CHANNELS; i++) {
-                ui_item(160, 64);
+                ui_item(ui_zoom() * 160, 64);
                     ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(color, color, color));
                 ui_end();
             }

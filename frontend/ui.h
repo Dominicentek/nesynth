@@ -31,8 +31,9 @@ void ui_subwindow(float w, float h);
 void ui_flow(UIFlow flow);
 void ui_end();
 void ui_next();
+void ui_limit_scroll(float min_x, float min_y, float max_x, float max_y);
 void ui_setup_offset(bool scroll_x, bool scroll_y);
-void ui_update_zoom(float offset_x, float offset_y);
+void ui_update_zoom(float offset_x);
 float ui_zoom();
 
 void ui_draw_rectangle(float x, float y, float w, float h, int color);
