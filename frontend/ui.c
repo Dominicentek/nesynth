@@ -78,6 +78,10 @@ static void ui_clip(SDL_Rect* out, SDL_Rect* rect1, SDL_Rect* rect2) {
     }
 }
 
+static bool ui_intersects_node(float x, float y) {
+    return x >= curr_node->x && y >= curr_node->y && x < curr_node->x + curr_node->w && y < curr_node->y + curr_node->h;
+}
+
 static UINode* ui_make_node(UINodeType type, float x, float y, float w, float h) {
     UINode* node = calloc(sizeof(UINode), 1);
     node->parent = curr_node;
@@ -230,7 +234,10 @@ void ui_middleclick() {
         if ((
             curr->event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
             curr->event.type == SDL_EVENT_MOUSE_BUTTON_UP
-        ) && curr->event.button.button == SDL_BUTTON_MIDDLE) {
+        ) && curr->event.button.button == SDL_BUTTON_MIDDLE && (
+            ui_intersects_node(curr->event.button.x, curr->event.button.y) ||
+            curr->event.type == SDL_EVENT_MOUSE_BUTTON_UP
+        )) {
             curr_node->info->dragging = curr->event.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
             curr_node->info->drag_x = curr->event.button.x;
             curr_node->info->drag_y = curr->event.button.y;
@@ -242,6 +249,17 @@ void ui_middleclick() {
             curr_node->info->drag_y = curr->event.motion.y;
         }
         curr = curr->next;
+    }
+}
+
+static void ui_advance(float width, float height) {
+    if (curr_node->flow == UIFlow_TopToBottom) {
+        curr_node->cursor_x += width + 1;
+        if (curr_node->cursor_max < height) curr_node->cursor_max = height;
+    }
+    else {
+        curr_node->cursor_y += height + 1;
+        if (curr_node->cursor_max < width) curr_node->cursor_max = width;
     }
 }
 
@@ -257,6 +275,11 @@ void ui_subwindow(float width, float height) {
     width -= 1; height -= 1;
     ui_push_node(UINodeType_Subwindow, curr_node->x + curr_node->cursor_x + curr_node->cursor_offset_x, curr_node->y + curr_node->cursor_y + curr_node->cursor_offset_y, width, height);
     ui_push_clip();
+}
+
+void ui_dummy(float width, float height) {
+    if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow) return;
+    ui_advance(width - 1, height - 1);
 }
 
 void ui_next() {
@@ -282,14 +305,7 @@ void ui_end() {
     float height = curr_node->h;
     ui_pop_clip();
     ui_pop_node();
-    if (curr_node->flow == UIFlow_TopToBottom) {
-        curr_node->cursor_x += width + 1;
-        if (curr_node->cursor_max < height) curr_node->cursor_max = height;
-    }
-    else {
-        curr_node->cursor_y += height + 1;
-        if (curr_node->cursor_max < width) curr_node->cursor_max = width;
-    }
+    ui_advance(width, height);
 }
 
 void ui_limit_scroll(float min_x, float min_y, float max_x, float max_y) {
@@ -321,7 +337,7 @@ void ui_update_zoom(float offset_x) {
     float x = curr_node->x + offset_x;
     float pos = NAN;
     while (curr && curr->next) {
-        if (curr->event.type == SDL_EVENT_MOUSE_WHEEL) {
+        if (curr->event.type == SDL_EVENT_MOUSE_WHEEL && ui_intersects_node(curr->event.wheel.mouse_x, curr->event.wheel.mouse_y)) {
             pos = curr->event.wheel.mouse_x - x;
             curr_node->info->zoom *= powf(2, curr->event.wheel.y);
             if (curr_node->info->zoom < min) curr_node
@@ -334,6 +350,12 @@ void ui_update_zoom(float offset_x) {
         float f = curr_node->info->zoom / prev;
         curr_node->info->scroll_x = (curr_node->info->scroll_x + pos) * (curr_node->info->zoom / prev) - pos;
     }
+}
+
+bool ui_inview(float width, float height) {
+    float x = curr_node->cursor_x + curr_node->cursor_offset_x;
+    float y = curr_node->cursor_y + curr_node->cursor_offset_y;
+    return x + width >= 0 && y + height >= 0 && x < curr_node->w && y < curr_node->h;
 }
 
 float ui_zoom() {
@@ -421,8 +443,10 @@ void ui_image_cropped(const char* path, float dx, float dy, float dw, float dh, 
     SDL_RenderTexture(curr_renderer, img_generate_texture(curr_renderer, img), &src, &dst);
 }
 
-static void ui_render_text(float x, float y, char* text) {
+static void ui_render_text(float x, float y, int color, char* text) {
     SDL_Texture* font = img_get_texture(curr_renderer, "images/font.png");
+    SDL_SetTextureColorMod(font, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF);
+    SDL_SetTextureAlphaMod(font, color & 0xFF);
     float off = 0;
     while (*text != 0) {
         int X = *text % 16;
@@ -437,7 +461,7 @@ static void ui_render_text(float x, float y, char* text) {
     }
 }
 
-void ui_text(float x, float y, const char* fmt, ...) {
+void ui_text(float x, float y, int color, const char* fmt, ...) {
     va_list args1, args2;
     va_start(args1, fmt);
     va_copy(args2, args1);
@@ -446,11 +470,11 @@ void ui_text(float x, float y, const char* fmt, ...) {
     vsprintf(str, fmt, args2);
     va_end(args1);
     va_end(args2);
-    ui_render_text(x, y, str);
+    ui_render_text(x, y, color, str);
     free(str);
 }
 
-void ui_text_positioned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, const char* fmt, ...) {
+void ui_text_positioned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, int color, const char* fmt, ...) {
     ui_resolve_auto(&x, &w, curr_node->w);
     ui_resolve_auto(&y, &h, curr_node->h);
     if (isnan(anchor_x)) anchor_x = 0.5;
@@ -467,6 +491,6 @@ void ui_text_positioned(float x, float y, float w, float h, float anchor_x, floa
     va_end(args2);
     x += roundf((w - size * 6) * anchor_x + off_x);
     y += roundf((h -        8) * anchor_y + off_y);
-    ui_render_text(x, y, str);
+    ui_render_text(x, y, color, str);
     free(str);
 }

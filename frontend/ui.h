@@ -28,12 +28,14 @@ void ui_scrollwheel();
 void ui_middleclick();
 void ui_item(float w, float h);
 void ui_subwindow(float w, float h);
+void ui_dummy(float w, float h);
 void ui_flow(UIFlow flow);
 void ui_end();
 void ui_next();
 void ui_limit_scroll(float min_x, float min_y, float max_x, float max_y);
 void ui_setup_offset(bool scroll_x, bool scroll_y);
 void ui_update_zoom(float offset_x);
+bool ui_inview(float width, float height);
 float ui_zoom();
 
 void ui_draw_rectangle(float x, float y, float w, float h, int color);
@@ -42,7 +44,7 @@ void ui_draw_gradientv(float x, float y, float w, float h, int from, int to);
 void ui_draw_line(float x1, float y1, float x2, float y2, int color);
 void ui_image(const char* img, float x, float y, float w, float h);
 void ui_image_cropped(const char* img, float dx, float dy, float dw, float dh, float sx, float sy, float sw, float sh);
-void ui_text(float x, float y, const char* fmt, ...);
-void ui_text_positioned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, const char* fmt, ...);
+void ui_text(float x, float y, int color, const char* fmt, ...);
+void ui_text_positioned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, int color, const char* fmt, ...);
 
 #endif

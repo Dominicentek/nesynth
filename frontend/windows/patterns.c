@@ -17,7 +17,7 @@ void window_patterns(float w, float h) {
             int color = i % 2 ? 32 : 48;
             ui_item(ui_zoom() * 160, 16);
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(color, color, color));
-                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, "%d", i + 1);
+                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, RGB(255, 255, 255), "%d", i + 1);
             ui_end();
         }
     ui_end();
