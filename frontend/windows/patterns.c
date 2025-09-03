@@ -3,19 +3,31 @@
 #define DEBUG_NUM_PATTERNS 64
 #define DEBUG_NUM_CHANNELS 4
 
+static const char* channel_names[] = {
+    "Square",
+    "Triangle",
+    "Noise",
+    "Waveform"
+};
+
 void window_patterns(float w, float h) {
     ui_middleclick();
     ui_update_zoom(128);
     ui_limit_scroll(0, 0, ui_zoom() * 160 * DEBUG_NUM_PATTERNS + 128, 64 * DEBUG_NUM_CHANNELS + 16);
     ui_setup_offset(false, false);
-    ui_item(128, 16);
+    ui_item(112, 16);
         ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
+        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, RGB(255, 255, 255), "Channels");
+    ui_end();
+    ui_item(16, 16);
+        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
+        ui_text(4, 4, RGB(255, 255, 255), "+");
     ui_end();
     ui_subwindow(w - 128, 16);
         ui_setup_offset(true, false);
         for (int i = 0; i < DEBUG_NUM_PATTERNS; i++) {
-            int color = i % 2 ? 32 : 48;
             ui_item(ui_zoom() * 160, 16);
+                int color = ui_hovered(true, false) ? 64 : i % 2 ? 32 : 48;
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(color, color, color));
                 ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, RGB(255, 255, 255), "%d", i + 1);
             ui_end();
@@ -26,7 +38,9 @@ void window_patterns(float w, float h) {
         ui_setup_offset(false, true);
         for (int i = 0; i < DEBUG_NUM_CHANNELS; i++) {
             ui_item(128, 64);
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
+                int color = ui_hovered(false, true) ? 64 : 32;
+                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(color, color, color));
+                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, RGB(255, 255, 255), "%s", channel_names[i]);
             ui_end();
             ui_next();
         }

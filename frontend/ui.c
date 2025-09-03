@@ -63,6 +63,24 @@ static uint64_t start_time;
 #define min(a, b) comp(a,<,b)
 #define max(a, b) comp(a,>,b)
 
+int ui_hsv(float h, float s, float v) {
+    int i = floor(h * 6);
+    float f = h * 6 - i;
+    float p = v * (1 - s);
+    float q = v * (1 - f * s);
+    float t = v * (1 - (1 - f) * s);
+    float r, g, b;
+    switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+    return RGB(r, g, b);
+}
+
 static void ui_clip(SDL_Rect* out, SDL_Rect* rect1, SDL_Rect* rect2) {
     if (
         rect2->x >= rect1->x + rect1->w ||
@@ -220,8 +238,11 @@ void ui_scrollwheel() {
     if (curr_node->type != UINodeType_Window) return;
     UIEvent* curr = events;
     while (curr && curr->next) {
-        if (curr->event.type == SDL_EVENT_MOUSE_WHEEL) {
-            curr_node->info->scroll_y -= curr->event.wheel.y * 16;
+        if (
+            curr->event.type == SDL_EVENT_MOUSE_WHEEL &&
+            ui_intersects_node(curr->event.wheel.mouse_x, curr->event.wheel.mouse_y)
+        ) {
+            curr_node->info->scroll_y -= curr->event.wheel.y * 20;
         }
         curr = curr->next;
     }
@@ -340,8 +361,7 @@ void ui_update_zoom(float offset_x) {
         if (curr->event.type == SDL_EVENT_MOUSE_WHEEL && ui_intersects_node(curr->event.wheel.mouse_x, curr->event.wheel.mouse_y)) {
             pos = curr->event.wheel.mouse_x - x;
             curr_node->info->zoom *= powf(2, curr->event.wheel.y);
-            if (curr_node->info->zoom < min) curr_node
-                ->info->zoom = min;
+            if (curr_node->info->zoom < min) curr_node->info->zoom = min;
             if (curr_node->info->zoom > max) curr_node->info->zoom = max;
         }
         curr = curr->next;
@@ -356,6 +376,38 @@ bool ui_inview(float width, float height) {
     float x = curr_node->cursor_x + curr_node->cursor_offset_x;
     float y = curr_node->cursor_y + curr_node->cursor_offset_y;
     return x + width >= 0 && y + height >= 0 && x < curr_node->w && y < curr_node->h;
+}
+
+bool ui_hovered(bool x, bool y) {
+    if (curr_node->type != UINodeType_Item) return false;
+    float mx, my;
+    SDL_GetMouseState(&mx, &my);
+    UINode* window = curr_node;
+    while (window->type != UINodeType_Window) window = window->parent;
+    return
+        (!x || (mx >= curr_node->x && mx < curr_node->x + curr_node->w)) && (!y || (my >= curr_node->y && my < curr_node->y + curr_node->h)) &&
+        (mx >= window->x && my >= window->y && mx < window->x + window->w && my < window->y + window->h);
+}
+
+static bool ui_process_click(int button) {
+    if (curr_node->type != UINodeType_Item) return false;
+    UIEvent* curr = events;
+    bool clicked = false;
+    while (curr && curr->next) {
+        if (curr->event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+            clicked = curr->event.button.button == button && ui_intersects_node(curr->event.button.x, curr->event.button.y);
+        }
+        curr = curr->next;
+    }
+    return clicked;
+}
+
+bool ui_clicked() {
+    return ui_process_click(SDL_BUTTON_LEFT);
+}
+
+bool ui_right_clicked() {
+    return ui_process_click(SDL_BUTTON_RIGHT);
 }
 
 float ui_zoom() {

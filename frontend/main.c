@@ -17,7 +17,7 @@ int main() {
             ui_process_event(&event);
         }
         ui_begin(window, renderer);
-        ui_splith(0, 32);
+        ui_splith(0, 36);
             ui_window(window_menubar);
             ui_splitv(1, -300);
                 ui_splith(0.25, 0);

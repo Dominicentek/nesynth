@@ -6,9 +6,27 @@
 
 typedef void(*UIWindow)(float w, float h);
 
-#define RGB(r, g, b) RGBA(r, g, b, 255)
-#define RGBA(r, g, b, a) (((COLOR(r) & 0xFF) << 24) | ((COLOR(g) & 0xFF) << 16) | ((COLOR(b) & 0xFF) << 8) | (COLOR(a) & 0xFF))
 #define COLOR(x) (int)(_Generic((x), float: (x) * 255, double: (x) * 255, long double: (x) * 255, default: (x)))
+#define RGB(r, g, b) RGBA(r, g, b, 255)
+#define HSV(h, s, v) HSVA(h, s, v, 255)
+#define RGBA(r, g, b, a) (((COLOR(r) & 0xFF) << 24) | ((COLOR(g) & 0xFF) << 16) | ((COLOR(b) & 0xFF) << 8) | (COLOR(a) & 0xFF))
+#define HSVA(h, s, v, a) ({ \
+    int i = floor((h) * 6); \
+    float f = (h) * 6 - i; \
+    float p = (v) * (1 - (s)); \
+    float q = (v) * (1 - f * (s)); \
+    float t = (v) * (1 - (1 - f) * (s)); \
+    float r, g, b; \
+    switch (i % 6) { \
+        case 0: r = (v), g = (t), b = (p); break; \
+        case 1: r = (q), g = (v), b = (p); break; \
+        case 2: r = (p), g = (v), b = (t); break; \
+        case 3: r = (p), g = (q), b = (v); break; \
+        case 4: r = (t), g = (p), b = (v); break; \
+        case 5: r = (v), g = (p), b = (q); break; \
+    } \
+    RGBA(r, g, b, a); \
+})
 
 #define AUTO NAN
 
@@ -16,6 +34,8 @@ typedef enum {
     UIFlow_TopToBottom,
     UIFlow_LeftToRight,
 } UIFlow;
+
+int ui_hsv(float h, float s, float v);
 
 void ui_process_event(SDL_Event* event);
 void ui_clear_events();
@@ -36,6 +56,9 @@ void ui_limit_scroll(float min_x, float min_y, float max_x, float max_y);
 void ui_setup_offset(bool scroll_x, bool scroll_y);
 void ui_update_zoom(float offset_x);
 bool ui_inview(float width, float height);
+bool ui_hovered(bool x, bool y);
+bool ui_clicked();
+bool ui_right_clicked();
 float ui_zoom();
 
 void ui_draw_rectangle(float x, float y, float w, float h, int color);
