@@ -428,7 +428,7 @@ void ui_draw_rectangle(float x, float y, float w, float h, int color) {
     ui_resolve_auto(&x, &w, curr_node->w);
     ui_resolve_auto(&y, &h, curr_node->h);
     SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-    SDL_FRect rect = { .x = x + curr_node->x, .y = y + curr_node->y, .w = w, .h = h };
+    SDL_FRect rect = { .x = (int)(x + curr_node->x), .y = (int)(y + curr_node->y), .w = (int)w, .h = (int)h };
     SDL_RenderFillRect(curr_renderer, &rect);
 }
 
@@ -453,7 +453,7 @@ void ui_draw_gradienth(float x, float y, float w, float h, int from, int to) {
     ui_resolve_auto(&y, &h, curr_node->h);
     for (int i = 0; i < h; i++) {
         int color = ui_interpolate_color(from, to, i / h);
-        SDL_FRect rect = { .x = x + curr_node->x, .y = y + i + curr_node->y, .w = w, .h = 1 };
+        SDL_FRect rect = { .x = (int)(x + curr_node->x), .y = (int)(y + i + curr_node->y), .w = (int)w, .h = 1 };
         SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
         SDL_RenderFillRect(curr_renderer, &rect);
     }
@@ -464,15 +464,21 @@ void ui_draw_gradientv(float x, float y, float w, float h, int from, int to) {
     ui_resolve_auto(&y, &h, curr_node->h);
     for (int i = 0; i < w; i++) {
         int color = ui_interpolate_color(from, to, i / h);
-        SDL_FRect rect = { .x = x + i + curr_node->x, .y = y + curr_node->y, .w = 1, .h = h };
+        SDL_FRect rect = { .x = (int)(x + i + curr_node->x), .y = (int)(y + curr_node->y), .w = 1, .h = (int)h };
         SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
         SDL_RenderFillRect(curr_renderer, &rect);
     }
 }
 
 void ui_draw_line(float x1, float y1, float x2, float y2, int color) {
+    if (isnan(x1) && isnan(x2)) { x1 = 0; x2 = curr_node->w; }
+    if (isnan(y1) && isnan(y2)) { y1 = 0; y2 = curr_node->h; }
+    if (isnan(x1) && !isnan(x2)) x1 = x2;
+    if (!isnan(x1) && isnan(x2)) x2 = x1;
+    if (isnan(y1) && !isnan(y2)) y1 = y2;
+    if (!isnan(y1) && isnan(y2)) y2 = y1;
     SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-    SDL_RenderLine(curr_renderer, x1 + curr_node->x, y1 + curr_node->y, x2 + curr_node->x, y2 + curr_node->y);
+    SDL_RenderLine(curr_renderer, (int)(x1 + curr_node->x), (int)(y1 + curr_node->y), (int)(x2 + curr_node->x), (int)(y2 + curr_node->y));
 }
 
 void ui_image(const char* path, float x, float y, float w, float h) {
@@ -490,8 +496,8 @@ void ui_image_cropped(const char* path, float dx, float dy, float dw, float dh, 
     ui_resolve_auto(&dy, &dh, sh);
     dx += curr_node->x;
     dy += curr_node->y;
-    SDL_FRect dst = { .x = dx, .y = dy, .w = dw, .h = dh };
-    SDL_FRect src = { .x = sx, .y = sy, .w = sw, .h = sh };
+    SDL_FRect dst = { .x = (int)dx, .y = (int)dy, .w = (int)dw, .h = (int)dh };
+    SDL_FRect src = { .x = (int)sx, .y = (int)sy, .w = (int)sw, .h = (int)sh };
     SDL_RenderTexture(curr_renderer, img_generate_texture(curr_renderer, img), &src, &dst);
 }
 
@@ -504,8 +510,8 @@ static void ui_render_text(float x, float y, int color, char* text) {
         int X = *text % 16;
         int Y = *text / 16 - 2;
         if (Y >= 0 && Y < 6) {
-            SDL_FRect src = { .x = X * 6, .y = Y * 8, .w = 6, .h = 8 };
-            SDL_FRect dst = { .x = x + off + curr_node->x, .y = y + curr_node->y, .w = 6, .h = 8 };
+            SDL_FRect src = { .x = (int)(X * 6), .y = (int)(Y * 8), .w = 6, .h = 8 };
+            SDL_FRect dst = { .x = (int)(x + off + curr_node->x), .y = (int)(y + curr_node->y), .w = 6, .h = 8 };
             SDL_RenderTexture(curr_renderer, font, &src, &dst);
             off += 6;
         }

@@ -4,6 +4,12 @@
 
 static const char* tones[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 
+static void draw_line(int count, int color, float offset, float width) {
+    for (int i = 1; i < count; i++) {
+        ui_draw_line(width * i / count + offset, AUTO, AUTO, AUTO, color);
+    }
+}
+
 void window_piano_roll(float w, float h) {
     ui_middleclick();
     ui_update_zoom(128);
@@ -59,9 +65,16 @@ void window_piano_roll(float w, float h) {
                     ui_item(width, 12);
                         ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(color, color, color));
                         ui_draw_line(width * 0 / 4, 0, width * 0 / 4, 12, RGB(16, 16, 16));
-                        ui_draw_line(width * 1 / 4, 0, width * 1 / 4, 12, RGB(16, 16, 16));
-                        ui_draw_line(width * 2 / 4, 0, width * 2 / 4, 12, RGB(16, 16, 16));
-                        ui_draw_line(width * 3 / 4, 0, width * 3 / 4, 12, RGB(16, 16, 16));
+                        if (ui_zoom() >= 0.25) {
+                            draw_line(4, RGB(16, 16, 16), 0, width);
+                            if (ui_zoom() >= 2) {
+                                color -= 8;
+                                draw_line(4, RGB(color, color, color), width * 0 / 4, width / 4);
+                                draw_line(4, RGB(color, color, color), width * 1 / 4, width / 4);
+                                draw_line(4, RGB(color, color, color), width * 2 / 4, width / 4);
+                                draw_line(4, RGB(color, color, color), width * 3 / 4, width / 4);
+                            }
+                        }
                         ui_draw_line(width * 4 / 4, 0, width * 4 / 4, 12, RGB(16, 16, 16));
                     ui_end();
                 }
