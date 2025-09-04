@@ -58,6 +58,10 @@ static UIWindowInfo *window_info, *window_info_head;
 static UIEvent *events, *events_head;
 static SDL_Renderer* curr_renderer;
 static uint64_t start_time;
+static char** curr_menu = NULL;
+static float menu_pos_x, menu_pos_y;
+static float menu_width, menu_height;
+static void(*menu_func)(int index);
 
 #define comp(a, op, b) ((a) op (b) ? (a) : (b))
 #define min(a, b) comp(a,<,b)
@@ -223,6 +227,45 @@ static UIWindowInfo* ui_find_window_info(UIWindow window) {
     return curr;
 }
 
+static void ui_print_index(int index) {
+    printf("Selected menu index %d\n", index);
+}
+
+static void ui_handle_menu() {
+    float x, y;
+    bool clicked = false;
+    UIEvent* curr = events;
+    SDL_GetMouseState(&x, &y);
+    while (curr && curr->next) {
+        if (curr->event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+            if (curr->event.button.button == SDL_BUTTON_LEFT) clicked = true;
+        }
+        curr = curr->next;
+    }
+    ui_push_node(UINodeType_Item, menu_pos_x, menu_pos_y, menu_width, menu_height);
+    ui_push_clip();
+    ui_draw_rectangle(0, 0, menu_width - 0, menu_height - 0, RGB(16, 16, 16));
+    ui_draw_rectangle(1, 1, menu_width - 2, menu_height - 2, RGB(32, 32, 32));
+    int ptr = 0;
+    int selected = x >= menu_pos_x && x < menu_pos_x + menu_width ? (y - menu_pos_y - 3) / 10 : -1;
+    while (curr_menu[ptr]) {
+        if (ptr == selected) {
+            ui_draw_rectangle(1, ptr * 10 + 1, menu_width - 2, 12, RGB(128, 128, 128));
+            if (clicked) (menu_func ? menu_func : ui_print_index)(ptr);
+        }
+        ui_text(3, ptr * 10 + 3, RGB(255, 255, 255), "%s", curr_menu[ptr]);
+        ptr++;
+    }
+    if (clicked) {
+        int ptr = 0;
+        while (curr_menu[ptr]) free(curr_menu[ptr++]);
+        free(curr_menu);
+        curr_menu = NULL;
+    }
+    ui_pop_clip();
+    ui_pop_node();
+}
+
 void ui_window(UIWindow window) {
     if (curr_node->type != UINodeType_Tile) return;
     curr_node->type = UINodeType_Window;
@@ -231,10 +274,14 @@ void ui_window(UIWindow window) {
     window(curr_node->w, curr_node->h);
     ui_pop_clip();
     ui_pop_node();
-    if (!curr_node) SDL_RenderPresent(curr_renderer);
+    if (!curr_node) {
+        if (curr_menu) ui_handle_menu();
+        SDL_RenderPresent(curr_renderer);
+    }
 }
 
 void ui_scrollwheel() {
+    if (curr_menu) return;
     if (curr_node->type != UINodeType_Window) return;
     UIEvent* curr = events;
     while (curr && curr->next) {
@@ -249,6 +296,7 @@ void ui_scrollwheel() {
 }
 
 void ui_middleclick() {
+    if (curr_menu) return;
     if (curr_node->type != UINodeType_Window) return;
     UIEvent* curr = events;
     while (curr && curr->next) {
@@ -350,6 +398,7 @@ void ui_setup_offset(bool h, bool v) {
 }
 
 void ui_update_zoom(float offset_x) {
+    if (curr_menu) return;
     if (curr_node->type != UINodeType_Window) return;
     UIEvent* curr = events;
     float min = powf(2, -4);
@@ -379,6 +428,7 @@ bool ui_inview(float width, float height) {
 }
 
 bool ui_hovered(bool x, bool y) {
+    if (curr_menu) return false;
     if (curr_node->type != UINodeType_Item) return false;
     float mx, my;
     SDL_GetMouseState(&mx, &my);
@@ -390,6 +440,7 @@ bool ui_hovered(bool x, bool y) {
 }
 
 static bool ui_process_click(int button) {
+    if (curr_menu) return false;
     if (curr_node->type != UINodeType_Item) return false;
     UIEvent* curr = events;
     bool clicked = false;
@@ -448,7 +499,10 @@ static char* last_dragndrop = NULL;
 static float dragndrop_pos_x, dragndrop_pos_y;
 
 void ui_dragndrop(char* id) {
-    if (curr_node->type != UINodeType_Item) return;
+    if (curr_menu || curr_node->type != UINodeType_Item) {
+        free(id);
+        return;
+    }
     float x, y;
     bool holding = SDL_GetMouseState(&x, &y) & SDL_BUTTON_LMASK;
     if (last_dragndrop) free(last_dragndrop);
@@ -473,6 +527,7 @@ void ui_dragndrop(char* id) {
 }
 
 bool ui_is_dragndropped() {
+    if (curr_menu) return false;
     if (!curr_dragndrop || !last_dragndrop) return false;
     return strcmp(curr_dragndrop, last_dragndrop) == 0;
 }
@@ -642,4 +697,30 @@ void ui_text_positioned(float x, float y, float w, float h, float anchor_x, floa
     y += roundf((h -        8) * anchor_y + off_y);
     ui_render_text(x, y, color, str);
     free(str);
+}
+
+void ui_menu(const char* items, void(*on_select)(int index)) {
+    int num_items = 0;
+    int ptr = 0;
+    while (true) {
+        if (items[ptr] == 0) {
+            num_items++;
+            if (items[ptr + 1] == 0) break;
+        }
+        ptr++;
+    }
+    ptr = 0;
+    curr_menu = malloc((num_items + 1) * sizeof(char*));
+    int max_len = 0;
+    for (int i = 0; i < num_items; i++) {
+        int len = strlen(items + ptr);
+        if (max_len < len) max_len = len;
+        curr_menu[i] = strdup(items + ptr);
+        ptr += len + 1;
+    }
+    menu_width = max_len * 6 + 6;
+    menu_height = num_items * 10 + 4;
+    menu_func = on_select;
+    curr_menu[num_items] = NULL;
+    SDL_GetMouseState(&menu_pos_x, &menu_pos_y);
 }

@@ -86,4 +86,6 @@ void ui_image_cropped(const char* img, float dx, float dy, float dw, float dh, f
 void ui_text(float x, float y, int color, const char* fmt, ...);
 void ui_text_positioned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, int color, const char* fmt, ...);
 
+void ui_menu(const char* items, void(*on_select)(int index));
+
 #endif

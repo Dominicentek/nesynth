@@ -28,6 +28,7 @@ void window_list(float w, float h, const char* title, ListItem** arr, int* size,
         for (int i = 0; i < *size; i++) {
             ui_item(w, 16);
                 if (ui_clicked()) *selected = (*arr)[i].item;
+                if (ui_right_clicked()) ui_menu("Edit\0Rename\0Delete\0", NULL);
                 ui_dragndrop(ui_idptr((*arr)[i].item));
                 if (ui_is_dragndropped()) {
                     int new_i = ui_mouse_y(UI_ParentRelative) / 16;
