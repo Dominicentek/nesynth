@@ -1,33 +1,33 @@
-#include "ui.h"
+#include "list.h"
 
-#define DEBUG_NUM_SONGS 16
+#include <stdlib.h>
 
-static int selected_song = 0;
+static ListItem songs[] = {
+    { .name = "Song 1",  .item = (void*)1  },
+    { .name = "Song 2",  .item = (void*)2  },
+    { .name = "Song 3",  .item = (void*)3  },
+    { .name = "Song 4",  .item = (void*)4  },
+    { .name = "Song 5",  .item = (void*)5  },
+    { .name = "Song 6",  .item = (void*)6  },
+    { .name = "Song 7",  .item = (void*)7  },
+    { .name = "Song 8",  .item = (void*)8  },
+    { .name = "Song 9",  .item = (void*)9  },
+    { .name = "Song 10", .item = (void*)10 },
+    { .name = "Song 11", .item = (void*)11 },
+    { .name = "Song 12", .item = (void*)12 },
+    { .name = "Song 13", .item = (void*)13 },
+    { .name = "Song 14", .item = (void*)14 },
+    { .name = "Song 15", .item = (void*)15 },
+    { .name = "Song 16", .item = (void*)16 },
+};
+static void* selected = (void*)1;
+static int size = sizeof(songs) / sizeof(*songs);
+
+static void* create_song() {
+    return NULL;
+}
 
 void window_songs(float w, float h) {
-    ui_scrollwheel();
-    ui_setup_offset(false, false);
-    ui_item(w - 16, 16);
-        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
-        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, RGB(255, 255, 255), "Songs");
-    ui_end();
-    ui_item(16, 16);
-        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
-        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, RGB(255, 255, 255), "+");
-    ui_end();
-    ui_next();
-    ui_subwindow(w, h - 16);
-        ui_flow(UIFlow_LeftToRight);
-        ui_setup_offset(false, true);
-        for (int i = 0; i < DEBUG_NUM_SONGS; i++) {
-            ui_item(w, 16);
-                if (ui_clicked()) selected_song = i;
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hsv((float)i / DEBUG_NUM_SONGS, 1, 1));
-                ui_text(4, 4, i == selected_song ? RGB(255, 255, 255) : RGB(16, 16, 16), "Song %d", i + 1);
-            ui_end();
-        }
-        ui_item(w, h);
-            ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
-        ui_end();
-    ui_end();
+    ListItem* items = songs;
+    window_list(w, h, "Songs", &items, &size, &selected, create_song);
 }

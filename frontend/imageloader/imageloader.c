@@ -50,7 +50,7 @@ SDL_Texture* img_generate_texture(SDL_Renderer* renderer, Image* img) {
     ImageData* cache = get(img);
     if (!cache) return NULL;
     if (cache->texture) return cache->texture;
-    SDL_Surface* surface = SDL_CreateSurfaceFrom(img->width, img->height, SDL_PIXELFORMAT_RGBA8888, img->data, 4 * img->width);
+    SDL_Surface* surface = SDL_CreateSurfaceFrom(img->width, img->height, SDL_PIXELFORMAT_ABGR8888, img->data, 4 * img->width);
     SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
     SDL_DestroySurface(surface);

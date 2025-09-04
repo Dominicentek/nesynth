@@ -35,6 +35,13 @@ typedef enum {
     UIFlow_LeftToRight,
 } UIFlow;
 
+typedef enum {
+    UI_GlobalRelative,
+    UI_WindowRelative,
+    UI_ParentRelative,
+    UI_ItemRelative,
+} UIRelativity;
+
 int ui_hsv(float h, float s, float v);
 
 void ui_process_event(SDL_Event* event);
@@ -60,6 +67,15 @@ bool ui_hovered(bool x, bool y);
 bool ui_clicked();
 bool ui_right_clicked();
 float ui_zoom();
+float ui_mouse_x(UIRelativity relativity);
+float ui_mouse_y(UIRelativity relativity);
+void ui_dragndrop(char* id);
+bool ui_is_dragndropped();
+
+char* ui_idstr(const char* str);
+char* ui_idstrnum(const char* str, int num);
+char* ui_idstrnums(const char* str, int count, ...);
+char* ui_idptr(const void* ptr);
 
 void ui_draw_rectangle(float x, float y, float w, float h, int color);
 void ui_draw_gradienth(float x, float y, float w, float h, int from, int to);

@@ -415,6 +415,97 @@ float ui_zoom() {
     return curr_node->info->zoom;
 }
 
+float ui_mouse_x(UIRelativity relativity) {
+    float x;
+    UINode* node = curr_node;
+    SDL_GetMouseState(&x, NULL);
+    if (curr_node->type != UINodeType_Item) return x;
+    switch (relativity) {
+        case UI_GlobalRelative: node = NULL; break;
+        case UI_ParentRelative: node = node->parent; break;
+        case UI_WindowRelative: while (node->type != UINodeType_Window) node = node->parent; break;
+        default: break;
+    }
+    return x - (node ? node->x : 0);
+}
+
+float ui_mouse_y(UIRelativity relativity) {
+    float y;
+    UINode* node = curr_node;
+    SDL_GetMouseState(NULL, &y);
+    if (curr_node->type != UINodeType_Item) return y;
+    switch (relativity) {
+        case UI_GlobalRelative: node = NULL; break;
+        case UI_ParentRelative: node = node->parent; break;
+        case UI_WindowRelative: while (node->type != UINodeType_Window) node = node->parent; break;
+        default: break;
+    }
+    return y - (node ? node->y : 0);
+}
+
+static char* curr_dragndrop = NULL;
+static char* last_dragndrop = NULL;
+static float dragndrop_pos_x, dragndrop_pos_y;
+
+void ui_dragndrop(char* id) {
+    if (curr_node->type != UINodeType_Item) return;
+    float x, y;
+    bool holding = SDL_GetMouseState(&x, &y) & SDL_BUTTON_LMASK;
+    if (last_dragndrop) free(last_dragndrop);
+    last_dragndrop = strdup(id);
+    free(id);
+    if (!holding) {
+        free(curr_dragndrop);
+        curr_dragndrop = NULL;
+        return;
+    }
+    if (ui_clicked()) {
+        curr_dragndrop = strdup(last_dragndrop);
+        dragndrop_pos_x = x - curr_node->x;
+        dragndrop_pos_y = y - curr_node->y;
+    }
+    else if (!ui_is_dragndropped()) return;
+    curr_node->x = x - dragndrop_pos_x;
+    curr_node->y = y - dragndrop_pos_y;
+    curr_clip->rect.x = x - dragndrop_pos_x;
+    curr_clip->rect.y = y - dragndrop_pos_y;
+    SDL_SetRenderClipRect(curr_renderer, &curr_clip->rect);
+}
+
+bool ui_is_dragndropped() {
+    if (!curr_dragndrop || !last_dragndrop) return false;
+    return strcmp(curr_dragndrop, last_dragndrop) == 0;
+}
+
+char* ui_idstr(const char* str) {
+    return strdup(str);
+}
+
+char* ui_idstrnum(const char* str, int num) {
+    return ui_idstrnums(str, 1, num);
+}
+
+char* ui_idstrnums(const char* str, int count, ...) {
+    va_list list;
+    va_start(list, count);
+    char buf[1024];
+    strcpy(buf, str);
+    int len = strlen(buf);
+    for (int i = 0; i < count; i++) {
+        if (len == 1023) break;
+        len += snprintf(buf + len, 1023 - len, ",%d", va_arg(list, int));
+    }
+    va_end(list);
+    return ui_idstr(buf);
+}
+
+char* ui_idptr(const void* ptr) {
+    int len = snprintf(NULL, 0, "%p", ptr);
+    char* str = malloc(len + 1);
+    sprintf(str, "%p", ptr);
+    return str;
+}
+
 static void ui_resolve_auto(float* pos, float* size, float container) {
     if (isnan(*pos) && isnan(*size)) {
         *pos = 0;

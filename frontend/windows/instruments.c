@@ -1,33 +1,29 @@
-#include "ui.h"
+#include "list.h"
 
-#define DEBUG_NUM_INSTRUMENTS 12
+#include <stdlib.h>
 
-static int selected_instrument = 0;
+static ListItem instruments[] = {
+    { .name = "Instrument 1",  .item = (void*)17 },
+    { .name = "Instrument 2",  .item = (void*)18 },
+    { .name = "Instrument 3",  .item = (void*)19 },
+    { .name = "Instrument 4",  .item = (void*)20 },
+    { .name = "Instrument 5",  .item = (void*)21 },
+    { .name = "Instrument 6",  .item = (void*)22 },
+    { .name = "Instrument 7",  .item = (void*)23 },
+    { .name = "Instrument 8",  .item = (void*)24 },
+    { .name = "Instrument 9",  .item = (void*)25 },
+    { .name = "Instrument 10", .item = (void*)26 },
+    { .name = "Instrument 11", .item = (void*)27 },
+    { .name = "Instrument 12", .item = (void*)28 },
+};
+static void* selected = (void*)1;
+static int size = sizeof(instruments) / sizeof(*instruments);
+
+static void* create_instrument() {
+    return NULL;
+}
 
 void window_instruments(float w, float h) {
-    ui_scrollwheel();
-    ui_setup_offset(false, false);
-    ui_item(w - 16, 16);
-        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
-        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, RGB(255, 255, 255), "Instruments");
-    ui_end();
-    ui_item(16, 16);
-        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
-        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, RGB(255, 255, 255), "+");
-    ui_end();
-    ui_next();
-    ui_subwindow(w, h - 16);
-        ui_flow(UIFlow_LeftToRight);
-        ui_setup_offset(false, true);
-        for (int i = 0; i < DEBUG_NUM_INSTRUMENTS; i++) {
-            ui_item(w, 16);
-                if (ui_clicked()) selected_instrument = i;
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hsv((float)i / DEBUG_NUM_INSTRUMENTS, 1, 1));
-                ui_text(4, 4, i == selected_instrument ? RGB(255, 255, 255) : RGB(16, 16, 16), "Instrument %d", i + 1);
-            ui_end();
-        }
-        ui_item(w, h);
-            ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
-        ui_end();
-    ui_end();
+    ListItem* items = instruments;
+    window_list(w, h, "Instruments", &items, &size, &selected, create_instrument);
 }
