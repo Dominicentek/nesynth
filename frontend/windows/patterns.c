@@ -16,20 +16,20 @@ void window_patterns(float w, float h) {
     ui_limit_scroll(0, 0, ui_zoom() * 160 * DEBUG_NUM_PATTERNS + 128, 64 * DEBUG_NUM_CHANNELS + 16);
     ui_setup_offset(false, false);
     ui_item(112, 16);
-        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
-        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, RGB(255, 255, 255), "Channels");
+        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
+        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "Channels");
     ui_end();
     ui_item(16, 16);
-        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
-        ui_text(4, 4, RGB(255, 255, 255), "+");
+        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
+        ui_text(4, 4, GRAY(255), "+");
     ui_end();
     ui_subwindow(w - 128, 16);
         ui_setup_offset(true, false);
         for (int i = 0; i < DEBUG_NUM_PATTERNS; i++) {
             ui_item(ui_zoom() * 160, 16);
                 int color = ui_hovered(true, false) ? 64 : i % 2 ? 32 : 48;
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(color, color, color));
-                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, RGB(255, 255, 255), "%d", i + 1);
+                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
+                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, GRAY(255), "%d", i + 1);
             ui_end();
         }
     ui_end();
@@ -39,8 +39,8 @@ void window_patterns(float w, float h) {
         for (int i = 0; i < DEBUG_NUM_CHANNELS; i++) {
             ui_item(128, 64);
                 int color = ui_hovered(false, true) ? 64 : 32;
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(color, color, color));
-                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, RGB(255, 255, 255), "%s", channel_names[i]);
+                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
+                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "%s", channel_names[i]);
             ui_end();
             ui_next();
         }
@@ -52,7 +52,7 @@ void window_patterns(float w, float h) {
             int color = i % 2 ? 32 : 48;
             for (int i = 0; i < DEBUG_NUM_CHANNELS; i++) {
                 ui_item(ui_zoom() * 160, 64);
-                    ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(color, color, color));
+                    ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
                 ui_end();
             }
             ui_next();

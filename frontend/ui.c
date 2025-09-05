@@ -244,16 +244,16 @@ static void ui_handle_menu() {
     }
     ui_push_node(UINodeType_Item, menu_pos_x, menu_pos_y, menu_width, menu_height);
     ui_push_clip();
-    ui_draw_rectangle(0, 0, menu_width - 0, menu_height - 0, RGB(16, 16, 16));
-    ui_draw_rectangle(1, 1, menu_width - 2, menu_height - 2, RGB(32, 32, 32));
+    ui_draw_rectangle(0, 0, menu_width - 0, menu_height - 0, GRAY(16));
+    ui_draw_rectangle(1, 1, menu_width - 2, menu_height - 2, GRAY(32));
     int ptr = 0;
     int selected = x >= menu_pos_x && x < menu_pos_x + menu_width ? (y - menu_pos_y - 3) / 10 : -1;
     while (curr_menu[ptr]) {
         if (ptr == selected) {
-            ui_draw_rectangle(1, ptr * 10 + 1, menu_width - 2, 12, RGB(128, 128, 128));
+            ui_draw_rectangle(1, ptr * 10 + 1, menu_width - 2, 12, GRAY(128));
             if (clicked) (menu_func ? menu_func : ui_print_index)(ptr);
         }
-        ui_text(3, ptr * 10 + 3, RGB(255, 255, 255), "%s", curr_menu[ptr]);
+        ui_text(3, ptr * 10 + 3, GRAY(255), "%s", curr_menu[ptr]);
         ptr++;
     }
     if (clicked) {

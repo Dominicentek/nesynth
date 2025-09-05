@@ -3,7 +3,7 @@
 bool item(const char* tex) {
     bool clicked = false;
     ui_item(36, 36);
-        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? RGB(48, 48, 48) : RGB(32, 32, 32));
+        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
         ui_image(tex, 2, 2, AUTO, AUTO);
         clicked = ui_clicked();
     ui_end();

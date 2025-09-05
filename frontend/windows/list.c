@@ -14,12 +14,12 @@ void window_list(float w, float h, const char* title, ListItem** arr, int* size,
     ui_scrollwheel();
     ui_setup_offset(false, false);
     ui_item(w - 16, 16);
-        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
-        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, RGB(255, 255, 255), title);
+        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
+        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, GRAY(255), title);
     ui_end();
     ui_item(16, 16);
-        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? RGB(48, 48, 48) : RGB(32, 32, 32));
-        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, RGB(255, 255, 255), "+");
+        ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
+        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "+");
     ui_end();
     ui_next();
     ui_subwindow(w, h - 16);
@@ -37,11 +37,11 @@ void window_list(float w, float h, const char* title, ListItem** arr, int* size,
                     arrmove(*arr, i, new_i, sizeof(ListItem));
                 }
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hsv((float)i / *size, 1, 1));
-                ui_text(4, 4, (*arr)[i].item == *selected ? RGB(255, 255, 255) : RGB(16, 16, 16), (*arr)[i].name);
+                ui_text(4, 4, (*arr)[i].item == *selected ? GRAY(255) : GRAY(16), (*arr)[i].name);
             ui_end();
         }
         ui_item(w, h);
-            ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, RGB(32, 32, 32));
+            ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
         ui_end();
     ui_end();
 }
