@@ -10,6 +10,8 @@
 #include "tiler.h"
 #include "imageloader.h"
 
+#define RVAL_PTR(...) (typeof(__VA_ARGS__)[]){__VA_ARGS__}
+
 typedef enum {
     UINodeType_Tile,
     UINodeType_Window,
@@ -52,16 +54,41 @@ typedef struct UIClip {
     SDL_Rect rect;
 } UIClip;
 
+typedef enum {
+    UIDrawType_None,
+    UIDrawType_Rectangle,
+    UIDrawType_GradientH,
+    UIDrawType_GradientV,
+    UIDrawType_Line,
+    UIDrawType_Image,
+    UIDrawType_Text,
+    UIDrawType_SetClip,
+    UIDrawType_ClearClip,
+} UIDrawType;
+
+typedef struct UIDrawList {
+    struct UIDrawList *next, *prev;
+    UIDrawType type;
+    int priority;
+    union { struct { int x, y; }; struct { int x1, y1; }; };
+    union { struct { int w, h; }; struct { int x2, y2; }; };
+    union { char* text; Image* image; };
+    union { int color, color_from; }; int color_to;
+    int srcx, srcy, srcw, srch;
+} UIDrawList;
+
 static UINode* curr_node;
 static UIClip* curr_clip;
 static UIWindowInfo *window_info, *window_info_head;
 static UIEvent *events, *events_head;
+static UIDrawList *drawlist, *drawlist_head;
 static SDL_Renderer* curr_renderer;
 static uint64_t start_time;
 static char** curr_menu = NULL;
 static float menu_pos_x, menu_pos_y;
 static float menu_width, menu_height;
 static void(*menu_func)(int index);
+static int draw_priority, num_draw_commands;
 
 #define comp(a, op, b) ((a) op (b) ? (a) : (b))
 #define min(a, b) comp(a,<,b)
@@ -146,12 +173,26 @@ static void ui_pop_node() {
     curr_node = next;
 }
 
+static UIDrawList* ui_push_drawlist(UIDrawType type) {
+    if (!drawlist) drawlist = drawlist_head = calloc(sizeof(UIDrawList), 1);
+    UIDrawList* node = drawlist_head;
+    node->next = calloc(sizeof(UIDrawList), 1);
+    node->next->prev = node;
+    node->type = type;
+    node->priority = draw_priority;
+    drawlist_head = node->next;
+    num_draw_commands++;
+    return node;
+}
+
 static void ui_push_clip() {
     SDL_Rect rect = { .x = curr_node->x, .y = curr_node->y, .w = curr_node->w, .h = curr_node->h };
     UIClip* clip = calloc(sizeof(UIClip), 1);
     clip->parent = curr_clip;
     if (clip->parent) ui_clip(&rect, &rect, &clip->parent->rect);
-    SDL_SetRenderClipRect(curr_renderer, &rect);
+    UIDrawList* cmd = ui_push_drawlist(UIDrawType_SetClip);
+    cmd->x = rect.x; cmd->y = rect.y;
+    cmd->w = rect.w; cmd->h = rect.h;
     clip->rect = rect;
     curr_clip = clip;
 }
@@ -160,7 +201,121 @@ static void ui_pop_clip() {
     UIClip* clip = curr_clip->parent;
     free(curr_clip);
     curr_clip = clip;
+    UIDrawList* cmd = ui_push_drawlist(curr_clip ? UIDrawType_SetClip : UIDrawType_ClearClip);
+    if (curr_clip) {
+        cmd->x = curr_clip->rect.x; cmd->y = curr_clip->rect.y;
+        cmd->w = curr_clip->rect.w; cmd->h = curr_clip->rect.h;
+    }
     SDL_SetRenderClipRect(curr_renderer, curr_clip ? &curr_clip->rect : NULL);
+}
+
+static int ui_compare_drawlist(const void* a, const void* b) {
+    UIDrawList* _a = *(UIDrawList**)a;
+    UIDrawList* _b = *(UIDrawList**)b;
+    return _a->priority - _b->priority;
+}
+
+static UIDrawList** ui_sort_drawlist() {
+    if (!drawlist) return NULL;
+    UIDrawList* curr = drawlist;
+    UIDrawList** list = malloc(sizeof(UIDrawList*) * num_draw_commands);
+    int ptr = 0;
+    while (true) {
+        list[ptr++] = curr;
+        curr = curr->next;
+        if (!curr->next) {
+            free(curr);
+            break;
+        }
+    }
+    qsort(list, num_draw_commands, sizeof(UIDrawList*), ui_compare_drawlist);
+    return list;
+}
+
+static void ui_render_text(float x, float y, int color, char* text) {
+    SDL_Texture* font = img_get_texture(curr_renderer, "images/font.png");
+    SDL_SetTextureColorMod(font, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF);
+    SDL_SetTextureAlphaMod(font, color & 0xFF);
+    float off = 0;
+    while (*text != 0) {
+        int X = *text % 16;
+        int Y = *text / 16 - 2;
+        if (Y >= 0 && Y < 6) {
+            SDL_FRect src = { .x = (int)(X * 6), .y = (int)(Y * 8), .w = 6, .h = 8 };
+            SDL_FRect dst = { .x = (int)(x + off), .y = (int)y, .w = 6, .h = 8 };
+            SDL_RenderTexture(curr_renderer, font, &src, &dst);
+            off += 6;
+        }
+        text++;
+    }
+}
+
+static int ui_interpolate_color(int from, int to, float x) {
+    float fr = ((from >> 24) & 0xFF) / 255.f;
+    float fg = ((from >> 16) & 0xFF) / 255.f;
+    float fb = ((from >>  8) & 0xFF) / 255.f;
+    float fa = ((from >>  0) & 0xFF) / 255.f;
+    float tr = ((to   >> 24) & 0xFF) / 255.f;
+    float tg = ((to   >> 16) & 0xFF) / 255.f;
+    float tb = ((to   >>  8) & 0xFF) / 255.f;
+    float ta = ((to   >>  0) & 0xFF) / 255.f;
+    int r = ((tr - fr) * x + fr) * 255;
+    int g = ((tg - fg) * x + fg) * 255;
+    int b = ((tb - fb) * x + fb) * 255;
+    int a = ((ta - fa) * x + fa) * 255;
+    return ((r & 0xFF) << 24) | ((g & 0xFF) << 16) | ((b & 0xFF) << 8) | (a & 0xFF);
+}
+
+static void ui_process_drawlist() {
+    UIDrawList** list = ui_sort_drawlist();
+    for (int i = 0; i < num_draw_commands; i++) {
+        UIDrawList* curr = list[i];
+        switch (curr->type) {
+            case UIDrawType_Rectangle:
+                SDL_SetRenderDrawColor(curr_renderer, (curr->color >> 24) & 0xFF, (curr->color >> 16) & 0xFF, (curr->color >> 8) & 0xFF, curr->color & 0xFF);
+                SDL_RenderFillRect(curr_renderer, RVAL_PTR((SDL_FRect){ .x = curr->x, .y = curr->y, .w = curr->w, .h = curr->h }));
+                break;
+            case UIDrawType_GradientH:
+                for (int i = 0; i < curr->w; i++) {
+                    int color = ui_interpolate_color(curr->color_from, curr->color_to, i / (float)curr->w);
+                    SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+                    SDL_RenderLine(curr_renderer, curr->x + i, curr->y, curr->x + i, curr->y + curr->h);
+                }
+                break;
+            case UIDrawType_GradientV:
+                for (int i = 0; i < curr->h; i++) {
+                    int color = ui_interpolate_color(curr->color_from, curr->color_to, i / (float)curr->h);
+                    SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+                    SDL_RenderLine(curr_renderer, curr->x, curr->y + i, curr->x + curr->w, curr->y + i);
+                }
+                break;
+            case UIDrawType_Line:
+                SDL_SetRenderDrawColor(curr_renderer, (curr->color >> 24) & 0xFF, (curr->color >> 16) & 0xFF, (curr->color >> 8) & 0xFF, curr->color & 0xFF);
+                SDL_RenderLine(curr_renderer, curr->x1, curr->y1, curr->x2, curr->y2);
+                break;
+            case UIDrawType_Image:
+                SDL_RenderTexture(curr_renderer, img_generate_texture(curr_renderer, curr->image),
+                    RVAL_PTR((SDL_FRect){ .x = curr->srcx, .y = curr->srcy, .w = curr->srcw, .h = curr->srch }),
+                    RVAL_PTR((SDL_FRect){ .x = curr->x,    .y = curr->y,    .w = curr->w,    .h = curr->h    })
+                );
+                break;
+            case UIDrawType_Text:
+                ui_render_text(curr->x, curr->y, curr->color, curr->text);
+                free(curr->text);
+                break;
+            case UIDrawType_SetClip:
+                SDL_SetRenderClipRect(curr_renderer, RVAL_PTR((SDL_Rect){ .x = curr->x, .y = curr->y, .w = curr->w, .h = curr->h }));
+                break;
+            case UIDrawType_ClearClip:
+                SDL_SetRenderClipRect(curr_renderer, NULL);
+                break;
+            default: break;
+        }
+        free(curr);
+    }
+    drawlist = NULL;
+    num_draw_commands = 0;
+    free(list);
 }
 
 void ui_process_event(SDL_Event* event) {
@@ -276,6 +431,7 @@ void ui_window(UIWindow window) {
     ui_pop_node();
     if (!curr_node) {
         if (curr_menu) ui_handle_menu();
+        ui_process_drawlist();
         SDL_RenderPresent(curr_renderer);
     }
 }
@@ -375,6 +531,7 @@ void ui_end() {
     ui_pop_clip();
     ui_pop_node();
     ui_advance(width, height);
+    draw_priority = 0;
 }
 
 void ui_limit_scroll(float min_x, float min_y, float max_x, float max_y) {
@@ -523,7 +680,12 @@ void ui_dragndrop(char* id) {
     curr_node->y = y - dragndrop_pos_y;
     curr_clip->rect.x = x - dragndrop_pos_x;
     curr_clip->rect.y = y - dragndrop_pos_y;
-    SDL_SetRenderClipRect(curr_renderer, &curr_clip->rect);
+    draw_priority = 1;
+    UIDrawList* cmd = ui_push_drawlist(UIDrawType_SetClip);
+    cmd->x = curr_clip->rect.x;
+    cmd->y = curr_clip->rect.y;
+    cmd->w = curr_clip->rect.w;
+    cmd->h = curr_clip->rect.h;
 }
 
 bool ui_is_dragndropped() {
@@ -573,47 +735,32 @@ static void ui_resolve_auto(float* pos, float* size, float container) {
 void ui_draw_rectangle(float x, float y, float w, float h, int color) {
     ui_resolve_auto(&x, &w, curr_node->w);
     ui_resolve_auto(&y, &h, curr_node->h);
-    SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-    SDL_FRect rect = { .x = (int)(x + curr_node->x), .y = (int)(y + curr_node->y), .w = (int)w, .h = (int)h };
-    SDL_RenderFillRect(curr_renderer, &rect);
+    UIDrawList* cmd = ui_push_drawlist(UIDrawType_Rectangle);
+    cmd->x = x + curr_node->x;
+    cmd->y = y + curr_node->y;
+    cmd->w = w;
+    cmd->h = h;
+    cmd->color = color;
 }
 
-static int ui_interpolate_color(int from, int to, float x) {
-    float fr = ((from >> 24) & 0xFF) / 255.f;
-    float fg = ((from >> 16) & 0xFF) / 255.f;
-    float fb = ((from >>  8) & 0xFF) / 255.f;
-    float fa = ((from >>  0) & 0xFF) / 255.f;
-    float tr = ((to   >> 24) & 0xFF) / 255.f;
-    float tg = ((to   >> 16) & 0xFF) / 255.f;
-    float tb = ((to   >>  8) & 0xFF) / 255.f;
-    float ta = ((to   >>  0) & 0xFF) / 255.f;
-    int r = ((tr - fr) * x + fr) * 255;
-    int g = ((tg - fg) * x + fg) * 255;
-    int b = ((tb - fb) * x + fb) * 255;
-    int a = ((ta - fa) * x + fa) * 255;
-    return ((r & 0xFF) << 24) | ((g & 0xFF) << 16) | ((b & 0xFF) << 8) | (a & 0xFF);
+static void ui_draw_gradient(float x, float y, float w, float h, int from, int to, UIDrawType drawtype) {
+    ui_resolve_auto(&x, &w, curr_node->w);
+    ui_resolve_auto(&y, &h, curr_node->h);
+    UIDrawList* cmd = ui_push_drawlist(drawtype);
+    cmd->x = x + curr_node->x;
+    cmd->y = y + curr_node->y;
+    cmd->w = w;
+    cmd->h = h;
+    cmd->color_from = from;
+    cmd->color_to   = to;
 }
 
 void ui_draw_gradienth(float x, float y, float w, float h, int from, int to) {
-    ui_resolve_auto(&x, &w, curr_node->w);
-    ui_resolve_auto(&y, &h, curr_node->h);
-    for (int i = 0; i < h; i++) {
-        int color = ui_interpolate_color(from, to, i / h);
-        SDL_FRect rect = { .x = (int)(x + curr_node->x), .y = (int)(y + i + curr_node->y), .w = (int)w, .h = 1 };
-        SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-        SDL_RenderFillRect(curr_renderer, &rect);
-    }
+    ui_draw_gradient(x, y, w, h, from, to, UIDrawType_GradientH);
 }
 
 void ui_draw_gradientv(float x, float y, float w, float h, int from, int to) {
-    ui_resolve_auto(&x, &w, curr_node->w);
-    ui_resolve_auto(&y, &h, curr_node->h);
-    for (int i = 0; i < w; i++) {
-        int color = ui_interpolate_color(from, to, i / h);
-        SDL_FRect rect = { .x = (int)(x + i + curr_node->x), .y = (int)(y + curr_node->y), .w = 1, .h = (int)h };
-        SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-        SDL_RenderFillRect(curr_renderer, &rect);
-    }
+    ui_draw_gradient(x, y, w, h, from, to, UIDrawType_GradientV);
 }
 
 void ui_draw_line(float x1, float y1, float x2, float y2, int color) {
@@ -623,8 +770,12 @@ void ui_draw_line(float x1, float y1, float x2, float y2, int color) {
     if (!isnan(x1) && isnan(x2)) x2 = x1;
     if (isnan(y1) && !isnan(y2)) y1 = y2;
     if (!isnan(y1) && isnan(y2)) y2 = y1;
-    SDL_SetRenderDrawColor(curr_renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-    SDL_RenderLine(curr_renderer, (int)(x1 + curr_node->x), (int)(y1 + curr_node->y), (int)(x2 + curr_node->x), (int)(y2 + curr_node->y));
+    UIDrawList* cmd = ui_push_drawlist(UIDrawType_Line);
+    cmd->x1 = x1 + curr_node->x;
+    cmd->y1 = y1 + curr_node->y;
+    cmd->x2 = x2 + curr_node->x;
+    cmd->y2 = y2 + curr_node->y;
+    cmd->color = color;
 }
 
 void ui_image(const char* path, float x, float y, float w, float h) {
@@ -642,27 +793,12 @@ void ui_image_cropped(const char* path, float dx, float dy, float dw, float dh, 
     ui_resolve_auto(&dy, &dh, sh);
     dx += curr_node->x;
     dy += curr_node->y;
-    SDL_FRect dst = { .x = (int)dx, .y = (int)dy, .w = (int)dw, .h = (int)dh };
-    SDL_FRect src = { .x = (int)sx, .y = (int)sy, .w = (int)sw, .h = (int)sh };
-    SDL_RenderTexture(curr_renderer, img_generate_texture(curr_renderer, img), &src, &dst);
-}
-
-static void ui_render_text(float x, float y, int color, char* text) {
-    SDL_Texture* font = img_get_texture(curr_renderer, "images/font.png");
-    SDL_SetTextureColorMod(font, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF);
-    SDL_SetTextureAlphaMod(font, color & 0xFF);
-    float off = 0;
-    while (*text != 0) {
-        int X = *text % 16;
-        int Y = *text / 16 - 2;
-        if (Y >= 0 && Y < 6) {
-            SDL_FRect src = { .x = (int)(X * 6), .y = (int)(Y * 8), .w = 6, .h = 8 };
-            SDL_FRect dst = { .x = (int)(x + off + curr_node->x), .y = (int)(y + curr_node->y), .w = 6, .h = 8 };
-            SDL_RenderTexture(curr_renderer, font, &src, &dst);
-            off += 6;
-        }
-        text++;
-    }
+    UIDrawList* cmd = ui_push_drawlist(UIDrawType_Image);
+    cmd->x = dx; cmd->srcx = sx;
+    cmd->y = dy; cmd->srcy = sy;
+    cmd->w = dw; cmd->srcw = sw;
+    cmd->h = dh; cmd->srch = sh;
+    cmd->image = img;
 }
 
 void ui_text(float x, float y, int color, const char* fmt, ...) {
@@ -674,8 +810,11 @@ void ui_text(float x, float y, int color, const char* fmt, ...) {
     vsprintf(str, fmt, args2);
     va_end(args1);
     va_end(args2);
-    ui_render_text(x, y, color, str);
-    free(str);
+    UIDrawList* cmd = ui_push_drawlist(UIDrawType_Text);
+    cmd->x = x + curr_node->x;
+    cmd->y = y + curr_node->y;
+    cmd->color = color;
+    cmd->text = str;
 }
 
 void ui_text_positioned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, int color, const char* fmt, ...) {
@@ -695,8 +834,11 @@ void ui_text_positioned(float x, float y, float w, float h, float anchor_x, floa
     va_end(args2);
     x += roundf((w - size * 6) * anchor_x + off_x);
     y += roundf((h -        8) * anchor_y + off_y);
-    ui_render_text(x, y, color, str);
-    free(str);
+    UIDrawList* cmd = ui_push_drawlist(UIDrawType_Text);
+    cmd->x = x + curr_node->x;
+    cmd->y = y + curr_node->y;
+    cmd->color = color;
+    cmd->text = str;
 }
 
 void ui_menu(const char* items, void(*on_select)(int index)) {
