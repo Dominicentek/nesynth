@@ -1,8 +1,6 @@
 #include "ui.h"
 #include "state.h"
 
-#include <stdio.h>
-
 static const char* channel_names[] = {
     "Square",
     "Triangle",
@@ -64,10 +62,19 @@ void window_patterns(float w, float h) {
         iter = nesynth_iter_channels(state.song);
         curr_pos = 0;
         while (nesynth_iter_next(iter)) {
+            NESynthChannel* channel = nesynth_iter_get(iter);
             for (int i = 0; i < patterns; i++) {
                 int color = i % 2 ? 32 : 48;
                 ui_item(ui_zoom() * 160, fmodf(curr_pos + channel_height, 1) < 0.5 ? floorf(channel_height) : ceilf(channel_height));
                     ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
+                    if (nesynth_any_pattern_at(channel, i) || ui_clicked()) {
+                        NESynthPattern* pattern = nesynth_get_pattern_at(channel, i);
+                        int id = nesynth_get_pattern_id(pattern);
+                        float h = (float)id / nesynth_num_unique_patterns(channel);
+                        ui_draw_rectangle(AUTO, 0, AUTO, 16, HSV(h, 1, 1));
+                        ui_draw_rectangle(AUTO, 16, AUTO, AUTO, HSVA(h, 1, 1, 0.5));
+                        ui_text_positioned(AUTO, 0, AUTO, 16, AUTO, AUTO, AUTO, AUTO, GRAY(0), "Pattern %d", id + 1);
+                    }
                 ui_end();
             }
             ui_next();

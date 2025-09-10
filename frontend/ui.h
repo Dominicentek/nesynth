@@ -11,23 +11,15 @@ typedef void(*UIWindow)(float w, float h);
 #define RGB(r, g, b) RGBA(r, g, b, 255)
 #define HSV(h, s, v) HSVA(h, s, v, 255)
 #define RGBA(r, g, b, a) (((COLOR(r) & 0xFF) << 24) | ((COLOR(g) & 0xFF) << 16) | ((COLOR(b) & 0xFF) << 8) | (COLOR(a) & 0xFF))
-#define HSVA(h, s, v, a) ({ \
-    int i = floor((h) * 6); \
-    float f = (h) * 6 - i; \
-    float p = (v) * (1 - (s)); \
-    float q = (v) * (1 - f * (s)); \
-    float t = (v) * (1 - (1 - f) * (s)); \
-    float r, g, b; \
-    switch (i % 6) { \
-        case 0: r = (v), g = (t), b = (p); break; \
-        case 1: r = (q), g = (v), b = (p); break; \
-        case 2: r = (p), g = (v), b = (t); break; \
-        case 3: r = (p), g = (q), b = (v); break; \
-        case 4: r = (t), g = (p), b = (v); break; \
-        case 5: r = (v), g = (p), b = (q); break; \
-    } \
-    RGBA(r, g, b, a); \
-})
+#define HSVA(h, s, v, a) HSV_TO_RGB((float)(h), (float)(s), (float)(v), a)
+#define HSV_TO_RGB(h, s, v, a) ( \
+    ((int)((h) * 6) % 6) == 0 ? RGBA((v), (v) * (1 - (1 - ((h) * 6 - 0)) * (s)), (v) * (1 - (s)), (a)) : \
+    ((int)((h) * 6) % 6) == 1 ? RGBA((v) * (1 - ((h) * 6 - 1) * (s)), (v), (v) * (1 - (s)), (a)) : \
+    ((int)((h) * 6) % 6) == 2 ? RGBA((v) * (1 - (s)), (v), (v) * (1 - (1 - ((h) * 6 - 2)) * (s)), (a)) : \
+    ((int)((h) * 6) % 6) == 3 ? RGBA((v) * (1 - (s)), (v) * (1 - ((h) * 6 - 3) * (s)), (v), (a)) : \
+    ((int)((h) * 6) % 6) == 4 ? RGBA((v) * (1 - (1 - ((h) * 6 - 4)) * (s)), (v) * (1 - (s)), (v), (a)) : \
+    ((int)((h) * 6) % 6) == 5 ? RGBA((v), (v) * (1 - (s)), (v) * (1 - ((h) * 6 - 5) * (s)), (a)) : 0 \
+)
 
 #define AUTO NAN
 
@@ -42,8 +34,6 @@ typedef enum {
     UI_ParentRelative,
     UI_ItemRelative,
 } UIRelativity;
-
-int ui_hsv(float h, float s, float v);
 
 void ui_process_event(SDL_Event* event);
 void ui_clear_events();

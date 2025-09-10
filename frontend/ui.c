@@ -95,24 +95,6 @@ static int draw_priority, num_draw_commands;
 #define min(a, b) comp(a,<,b)
 #define max(a, b) comp(a,>,b)
 
-int ui_hsv(float h, float s, float v) {
-    int i = floor(h * 6);
-    float f = h * 6 - i;
-    float p = v * (1 - s);
-    float q = v * (1 - f * s);
-    float t = v * (1 - (1 - f) * s);
-    float r, g, b;
-    switch (i % 6) {
-        case 0: r = v, g = t, b = p; break;
-        case 1: r = q, g = v, b = p; break;
-        case 2: r = p, g = v, b = t; break;
-        case 3: r = p, g = q, b = v; break;
-        case 4: r = t, g = p, b = v; break;
-        case 5: r = v, g = p, b = q; break;
-    }
-    return RGB(r, g, b);
-}
-
 static void ui_clip(SDL_Rect* out, SDL_Rect* rect1, SDL_Rect* rect2) {
     if (
         rect2->x >= rect1->x + rect1->w ||
@@ -339,6 +321,7 @@ void ui_clear_events() {
 void ui_begin(SDL_Window* window, SDL_Renderer* renderer) {
     if (curr_node) return;
     int width, height;
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(renderer, 16, 16, 16, 255);
     SDL_RenderClear(renderer);
     SDL_GetWindowSize(window, &width, &height);

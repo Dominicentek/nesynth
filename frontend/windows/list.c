@@ -37,7 +37,7 @@ void window_list(float w, float h, const char* title, List* list, void* selected
                     if (new_i >= list->num_items) new_i = list->num_items - 1;
                     arrmove(list->items, i, new_i, sizeof(ListItem));
                 }
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hsv((float)i / list->num_items, 1, 1));
+                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, HSV((float)i / list->num_items, 1, 1));
                 ui_text(4, 4, list->items[i].item == *(void**)selected ? GRAY(255) : GRAY(16), list->items[i].name);
             ui_end();
         }

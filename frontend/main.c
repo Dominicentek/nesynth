@@ -15,7 +15,7 @@ int main() {
         SDL_Event event;
         ui_clear_events();
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT) goto quit;
+            if (event.type == SDL_EVENT_QUIT) return 0;
             ui_process_event(&event);
         }
         ui_begin(window, renderer);
@@ -29,7 +29,4 @@ int main() {
                     ui_window(window_songs);
                     ui_window(window_instruments);
     }
-    quit:
-    SDL_DestroyWindow(window);
-    return 0;
 }
