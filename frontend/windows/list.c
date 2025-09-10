@@ -10,7 +10,7 @@ static void arrmove(void* arr, size_t from, size_t to, size_t size) {
     memcpy((char*)arr + size * to, item, size);
 }
 
-void window_list(float w, float h, const char* title, ListItem** arr, int* size, void** selected, void*(*create_item)()) {
+void window_list(float w, float h, const char* title, List* list, void* selected, void(*create_item)()) {
     ui_scrollwheel();
     ui_setup_offset(false, false);
     ui_item(w - 16, 16);
@@ -20,24 +20,25 @@ void window_list(float w, float h, const char* title, ListItem** arr, int* size,
     ui_item(16, 16);
         ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
         ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "+");
+        if (ui_clicked()) create_item();
     ui_end();
     ui_next();
     ui_subwindow(w, h - 16);
         ui_flow(UIFlow_LeftToRight);
         ui_setup_offset(false, true);
-        for (int i = 0; i < *size; i++) {
+        for (int i = 0; i < list->num_items; i++) {
             ui_item(w, 16);
-                if (ui_clicked()) *selected = (*arr)[i].item;
+                if (ui_clicked()) selected = list->items[i].item;
                 if (ui_right_clicked()) ui_menu("Edit\0Rename\0Delete\0", NULL);
-                ui_dragndrop(ui_idptr((*arr)[i].item));
+                ui_dragndrop(ui_idptr(list->items[i].item));
                 if (ui_is_dragndropped()) {
                     int new_i = ui_mouse_y(UI_ParentRelative) / 16;
                     if (new_i < 0) new_i = 0;
-                    if (new_i >= *size) new_i = *size - 1;
-                    arrmove(*arr, i, new_i, sizeof(ListItem));
+                    if (new_i >= list->num_items) new_i = list->num_items - 1;
+                    arrmove(list->items, i, new_i, sizeof(ListItem));
                 }
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hsv((float)i / *size, 1, 1));
-                ui_text(4, 4, (*arr)[i].item == *selected ? GRAY(255) : GRAY(16), (*arr)[i].name);
+                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hsv((float)i / list->num_items, 1, 1));
+                ui_text(4, 4, list->items[i].item == selected ? GRAY(255) : GRAY(16), list->items[i].name);
             ui_end();
         }
         ui_item(w, h);

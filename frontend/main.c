@@ -2,6 +2,7 @@
 
 #include "ui.h"
 #include "windows.h"
+#include "state.h"
 
 int main() {
     SDL_Window* window;
@@ -9,6 +10,7 @@ int main() {
     SDL_CreateWindowAndRenderer("NESynth", 1280, 720, 0, &window, &renderer);
     SDL_SetRenderVSync(renderer, 1);
     SDL_ShowWindow(window);
+    state_init();
     while (1) {
         SDL_Event event;
         ui_clear_events();

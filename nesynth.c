@@ -87,6 +87,12 @@ struct NESynthNote {
     bool attack;
 };
 
+struct NESynthIter {
+    int index;
+    NESynthLinkedList* element;
+    NESynthLinkedList* first;
+};
+
 typedef bool(*LinkedListQuery)(void* item);
 
 static NESynthLinkedList* linkedlist_create();
@@ -431,6 +437,10 @@ NESynthChannel* nesynth_get_channel(NESynthSong* song, int index) {
     return linkedlist_index(song->channels, index);
 }
 
+NESynthChannelType nesynth_get_channel_type(NESynthChannel* channel) {
+    return channel->type;
+}
+
 void nesynth_delete_channel(NESynthChannel* channel) {
     linkedlist_del(channel->parent->channels, channel);
     nesynth_destroy_channel(channel);
@@ -469,6 +479,10 @@ NESynthPattern* nesynth_get_pattern_at(NESynthChannel* channel, int position) {
         linkedlist_add(channel->patterns, pattern);
     }
     return channel->pattern_layout[position];
+}
+
+int nesynth_num_unique_patterns(NESynthChannel* channel) {
+    return linkedlist_length(channel->patterns);
 }
 
 int nesynth_get_pattern_id(NESynthPattern* pattern) {
@@ -542,6 +556,10 @@ static int nesynth_nodetable_compare(NESynthNode* a, NESynthNode* b) {
     return (a->pos > b->pos) - (a->pos < b->pos);
 }
 
+int nesynth_nodetable_num_nodes(NESynthNodeTable* node_table) {
+    return linkedlist_length(node_table->nodes);
+}
+
 int nesynth_nodetable_insert(NESynthNodeTable* node_table, float position, float value) {
     NESynthNode* node = calloc(sizeof(NESynthNode), 1);
     node->base = node->slide = value;
@@ -608,6 +626,35 @@ static void nesynth_destroy_nodetable(NESynthNodeTable* node_table) {
     linkedlist_foreach(node_table->nodes, free(curr));
     linkedlist_destroy(node_table->nodes);
     free(node_table);
+}
+
+static NESynthIter* nesynth_iter(NESynthLinkedList* list) {
+    NESynthIter* iter = malloc(sizeof(NESynthIter));
+    iter->index = -1;
+    iter->element = list->prev ? list->prev : NULL;
+    iter->first = list;
+    return iter;
+}
+
+NESynthIter* nesynth_iter_instruments(NESynth* synth) { return nesynth_iter(synth->instruments); }
+NESynthIter* nesynth_iter_songs(NESynth* synth) { return nesynth_iter(synth->instruments); }
+NESynthIter* nesynth_iter_channels(NESynthSong* song) { return nesynth_iter(song->channels); }
+NESynthIter* nesynth_iter_patterns(NESynthChannel* channel) { return nesynth_iter(channel->patterns); }
+NESynthIter* nesynth_iter_notes(NESynthPattern* pattern, NESynthNoteType type) { return nesynth_iter(pattern->notes[type]); }
+NESynthIter* nesynth_iter_nodes(NESynthNodeTable* node_table) { return nesynth_iter(node_table->nodes); }
+
+bool nesynth_iter_next(NESynthIter* iter) {
+    if (!iter->element || (iter->element->next == iter->first && iter->index != -1)) {
+        free(iter);
+        return false;
+    }
+    iter->index++;
+    iter->element = iter->element->next;
+    return true;
+}
+
+void* nesynth_iter_get(NESynthIter* iter) {
+    return iter->index == -1 ? NULL : iter->element ? iter->element->item : NULL;
 }
 
 // == RENDERER ==

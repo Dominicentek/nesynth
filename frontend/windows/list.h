@@ -6,6 +6,11 @@ typedef struct {
     void* item;
 } ListItem;
 
-void window_list(float w, float h, const char* title, ListItem** arr, int* size, void** selected, void*(*create_item)());
+typedef struct {
+    int num_items;
+    ListItem* items;
+} List;
+
+void window_list(float w, float h, const char* title, List* list, void* selected, void(*create_item)());
 
 #endif

@@ -13,6 +13,7 @@ typedef struct NESynthChannel NESynthChannel;
 typedef struct NESynthPattern NESynthPattern;
 typedef struct NESynthNote NESynthNote;
 typedef struct NESynthNodeTable NESynthNodeTable;
+typedef struct NESynthIter NESynthIter;
 typedef void(*NESynthCmdFunc)();
 
 typedef enum {
@@ -88,10 +89,12 @@ float* nesynth_song_bpm(NESynthSong* song);
 int nesynth_num_channels(NESynthSong* song);
 NESynthChannel* nesynth_add_channel(NESynthSong* song, NESynthChannelType type);
 NESynthChannel* nesynth_get_channel(NESynthSong* song, int index);
+NESynthChannelType nesynth_get_channel_type(NESynthChannel* channel);
 void nesynth_delete_channel(NESynthChannel* channel);
 void nesynth_assign_pattern(NESynthChannel* channel, int pattern_id, int position);
 void nesynth_remove_pattern_at(NESynthChannel* channel, int position);
 bool nesynth_any_pattern_at(NESynthChannel* channel, int position);
+int nesynth_num_unique_patterns(NESynthChannel* channel);
 
 NESynthPattern* nesynth_get_pattern_at(NESynthChannel* channel, int position);
 int nesynth_get_pattern_id(NESynthPattern* pattern);
@@ -107,11 +110,21 @@ float* nesynth_note_start(NESynthNote* note);
 float* nesynth_note_length(NESynthNote* note);
 NESynthInstrument** nesynth_note_instrument(NESynthNote* note);
 
+int nesynth_nodetable_num_nodes(NESynthNodeTable* node_table);
 int nesynth_nodetable_insert(NESynthNodeTable* node_table, float position, float value);
 void nesynth_nodetable_remove(NESynthNodeTable* node_table, int index);
 float* nesynth_nodetable_loop_point(NESynthNodeTable* node_table);
 float* nesynth_nodetable_value(NESynthNodeTable* node_table, int index);
 float* nesynth_nodetable_slide(NESynthNodeTable* node_table, int index);
+
+NESynthIter* nesynth_iter_instruments(NESynth* synth);
+NESynthIter* nesynth_iter_songs(NESynth* synth);
+NESynthIter* nesynth_iter_channels(NESynthSong* song);
+NESynthIter* nesynth_iter_patterns(NESynthChannel* channel);
+NESynthIter* nesynth_iter_notes(NESynthPattern* pattern, NESynthNoteType type);
+NESynthIter* nesynth_iter_nodes(NESynthNodeTable* node_table);
+bool nesynth_iter_next(NESynthIter* iter);
+void* nesynth_iter_get(NESynthIter* iter);
 
 NESynthSample* nesynthcmd_render(NESynthCmdFunc func, int sample_rate, int* num_samples, int* loop_point, float volume);
 

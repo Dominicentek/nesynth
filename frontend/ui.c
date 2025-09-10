@@ -88,6 +88,7 @@ static char** curr_menu = NULL;
 static float menu_pos_x, menu_pos_y;
 static float menu_width, menu_height;
 static void(*menu_func)(int index);
+static bool menu_just_opened;
 static int draw_priority, num_draw_commands;
 
 #define comp(a, op, b) ((a) op (b) ? (a) : (b))
@@ -397,6 +398,8 @@ static void ui_handle_menu() {
         }
         curr = curr->next;
     }
+    if (menu_just_opened) clicked = false;
+    menu_just_opened = false;
     ui_push_node(UINodeType_Item, menu_pos_x, menu_pos_y, menu_width, menu_height);
     ui_push_clip();
     ui_draw_rectangle(0, 0, menu_width - 0, menu_height - 0, GRAY(16));
@@ -863,6 +866,7 @@ void ui_menu(const char* items, void(*on_select)(int index)) {
     menu_width = max_len * 6 + 6;
     menu_height = num_items * 10 + 4;
     menu_func = on_select;
+    menu_just_opened = true;
     curr_menu[num_items] = NULL;
     SDL_GetMouseState(&menu_pos_x, &menu_pos_y);
 }
