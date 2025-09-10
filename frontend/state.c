@@ -34,9 +34,6 @@ void state_add_instrument() {
 void state_add_song() {
     state.song = nesynth_add_song(state.synth);
     state.channel = nesynth_add_channel(state.song, NESynthChannelType_Square);
-    nesynth_add_channel(state.song, NESynthChannelType_Square);
-    nesynth_add_channel(state.song, NESynthChannelType_Triangle);
-    nesynth_add_channel(state.song, NESynthChannelType_Noise);
     *nesynth_song_bpm(state.song) = 120;
     state_list_add(&songs, state.song, "Song %d");
 }

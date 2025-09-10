@@ -28,7 +28,7 @@ void window_list(float w, float h, const char* title, List* list, void* selected
         ui_setup_offset(false, true);
         for (int i = 0; i < list->num_items; i++) {
             ui_item(w, 16);
-                if (ui_clicked()) selected = list->items[i].item;
+                if (ui_clicked()) *(void**)selected = list->items[i].item;
                 if (ui_right_clicked()) ui_menu("Edit\0Rename\0Delete\0", NULL);
                 ui_dragndrop(ui_idptr(list->items[i].item));
                 if (ui_is_dragndropped()) {
@@ -38,7 +38,7 @@ void window_list(float w, float h, const char* title, List* list, void* selected
                     arrmove(list->items, i, new_i, sizeof(ListItem));
                 }
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hsv((float)i / list->num_items, 1, 1));
-                ui_text(4, 4, list->items[i].item == selected ? GRAY(255) : GRAY(16), list->items[i].name);
+                ui_text(4, 4, list->items[i].item == *(void**)selected ? GRAY(255) : GRAY(16), list->items[i].name);
             ui_end();
         }
         ui_item(w, h);
