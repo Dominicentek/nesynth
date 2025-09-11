@@ -7,7 +7,8 @@
 typedef void(*UIWindow)(float w, float h);
 
 #define COLOR(x) (int)(_Generic((x), float: (x) * 255, double: (x) * 255, long double: (x) * 255, default: (x)))
-#define GRAY(x) RGBA(x, x, x, 255)
+#define GRAY(x) GRAYA(x, 255)
+#define GRAYA(x, a) RGBA(x, x, x, a)
 #define RGB(r, g, b) RGBA(r, g, b, 255)
 #define HSV(h, s, v) HSVA(h, s, v, 255)
 #define RGBA(r, g, b, a) (((COLOR(r) & 0xFF) << 24) | ((COLOR(g) & 0xFF) << 16) | ((COLOR(b) & 0xFF) << 8) | (COLOR(a) & 0xFF))
