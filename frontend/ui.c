@@ -1,6 +1,7 @@
 #include <SDL3/SDL.h>
 
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_render.h>
 #include <stdlib.h>
@@ -604,9 +605,23 @@ bool ui_right_clicked() {
     return ui_process_click(SDL_BUTTON_RIGHT);
 }
 
+bool ui_mouse_down() {
+    return SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK;
+}
+
 float ui_zoom() {
     if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow && curr_node->type != UINodeType_Item) return 0;
     return curr_node->info->zoom;
+}
+
+float ui_scroll_x() {
+    if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow && curr_node->type != UINodeType_Item) return 0;
+    return curr_node->info->scroll_x;
+}
+
+float ui_scroll_y() {
+    if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow && curr_node->type != UINodeType_Item) return 0;
+    return curr_node->info->scroll_y;
 }
 
 float ui_mouse_x(UIRelativity relativity) {

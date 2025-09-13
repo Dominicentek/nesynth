@@ -2,10 +2,19 @@
 #include "state.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+
+typedef struct {
+    NESynthNote* note;
+    float start, end;
+    int pattern_pos, index;
+} NoteProperties;
 
 static const char* tones[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 static int magnet = 4;
 static bool magnet_enabled = true;
+
+#define EDGE_TOLERANCE 8
 
 static void draw_line(int count, int color, float offset, float width) {
     for (int i = 1; i < count; i++) {
@@ -26,15 +35,105 @@ static void set_magnet(int index) {
     }
 }
 
-static void update_notes(int pattern_pos, float w) {
-    int note = NESYNTH_NOTE(C, 9) - ui_mouse_y(UI_ItemRelative) / 12;
-    float pos = ui_mouse_x(UI_ItemRelative) / w * 4;
-    if (magnet_enabled) pos = floorf(pos * magnet) / magnet;
-    if (ui_clicked()) nesynth_insert_note(
-        nesynth_get_pattern_at(state.channel, pattern_pos),
-        NESynthNoteType_Instrument, state.instrument,
-        note, pos, 1.f / magnet
-    );
+static NESynthNote* update_notes(float width, NoteProperties* notes, int num_notes, NESynthNoteType type) {
+    static NoteProperties* curr_note = NULL;
+    static float drag_offset;
+    static enum {
+        Drag_ResizeEnd,
+        Drag_ResizeStart,
+        Drag_Move
+    } curr_drag_action;
+
+    int pitch = NESYNTH_NOTE(C, 9) - ui_mouse_y(UI_ItemRelative) / 12;
+    float pos = ui_mouse_x(UI_ItemRelative) / width * 4;
+    float csnap_pos = magnet_enabled ?  ceilf(pos * magnet) / magnet : pos;
+    float fsnap_pos = magnet_enabled ? floorf(pos * magnet) / magnet : pos;
+    if (ui_mouse_down() && curr_note) {
+        NESynthNote* note = curr_note->note;
+        float prev_base = *nesynth_base_note(note);
+        float prev_start = *nesynth_note_start(note);
+        float frel_pos = fmodf(fsnap_pos, 4);
+        float crel_pos = fmodf(csnap_pos, 4);
+        switch (curr_drag_action) {
+            case Drag_Move:
+                *nesynth_base_note(note) = pitch;
+                *nesynth_slide_note(note) += *nesynth_base_note(note) - prev_base;
+                *nesynth_note_start(note) += frel_pos - fmodf(drag_offset, 4);
+                break;
+            case Drag_ResizeStart:
+                *nesynth_note_start(note) = frel_pos;
+                *nesynth_note_length(note) -= *nesynth_note_start(note) - prev_start;
+                break;
+            case Drag_ResizeEnd:
+                if (crel_pos - *nesynth_note_start(note) > 0) 
+                    *nesynth_note_length(note) = crel_pos - *nesynth_note_start(note);
+                break;
+        }
+        drag_offset = fsnap_pos;
+        return note;
+    }
+    if (curr_note) free(curr_note);
+    curr_note = NULL;
+    NoteProperties* hover = NULL;
+    for (int i = 0; i < num_notes; i++) {
+        if (pos >= notes[i].start && pos < notes[i].end && pitch == *nesynth_base_note(notes[i].note)) {
+            hover = &notes[i];
+            break;
+        }
+    }
+    if (ui_clicked()) {
+        if (hover) {
+            float edge_tolerance = EDGE_TOLERANCE / width * 4;
+            curr_note = malloc(sizeof(NoteProperties));
+            drag_offset = pos;
+            memcpy(curr_note, hover, sizeof(NoteProperties));
+            if (pos >= hover->end - edge_tolerance) curr_drag_action = Drag_ResizeEnd;
+            else if (pos < hover->start + edge_tolerance) curr_drag_action = Drag_ResizeStart;
+            else curr_drag_action = Drag_Move;
+        }
+        else {
+            drag_offset = fsnap_pos;
+            curr_drag_action = Drag_ResizeEnd;
+            curr_note = malloc(sizeof(NoteProperties));
+            *curr_note = (NoteProperties){
+                .note = nesynth_insert_note(
+                    nesynth_get_pattern_at(state.channel, fsnap_pos / 4),
+                    type, state.instrument, pitch, fmodf(fsnap_pos, 4), 1.f / magnet
+                ),
+                .start = fsnap_pos, .end = csnap_pos + 1.f / magnet,
+                .pattern_pos = fsnap_pos / 4, .index = -1,
+            };
+        }
+    }
+    return hover ? hover->note : NULL;
+}
+
+static NoteProperties* get_notes(float pattern_width, float width, int* num_notes, NESynthNoteType note_type) {
+    float start = ui_scroll_x() / pattern_width * 4;
+    float end = (ui_scroll_x() + width) / pattern_width * 4;
+    NoteProperties* notes = NULL;
+    *num_notes = 0;
+    for (int i = 0; i < nesynth_song_get_length(state.song); i++) {
+        if (!nesynth_any_pattern_at(state.channel, i)) continue;
+        NESynthPattern* pattern = nesynth_get_pattern_at(state.channel, i);
+        NESynthIter* note_iter = nesynth_iter_notes(pattern, note_type);
+        int index = -1;
+        while (nesynth_iter_next(note_iter)) {
+            index++;
+            NESynthNote* note = nesynth_iter_get(note_iter);
+            if (start - i * 4 >= *nesynth_note_start(note) + *nesynth_note_length(note) || end - i * 4 < *nesynth_note_start(note)) continue;
+            (*num_notes)++;
+            notes = realloc(notes, sizeof(NoteProperties) * *num_notes);
+            notes[*num_notes - 1] = (NoteProperties){
+                .note = note,
+                .start = i * 4 + *nesynth_note_start(note),
+                .end   = i * 4 + *nesynth_note_start(note) + *nesynth_note_length(note),
+                .index = index,
+                .pattern_pos = i,
+            };
+        }
+    }
+    return notes;
 }
 
 void window_piano_roll(float w, float h) {
@@ -66,6 +165,11 @@ void window_piano_roll(float w, float h) {
         ui_flow(UIFlow_LeftToRight);
         ui_setup_offset(true, false);
         for (int i = 0; i < patterns; i++) {
+            if (!ui_inview(width, 32)) {
+                ui_dummy(width, 32);
+                ui_next();
+                continue;
+            }
             int color = i % 2 ? 32 : 48;
             ui_item(width, 16);
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
@@ -78,6 +182,8 @@ void window_piano_roll(float w, float h) {
             ui_end();
             ui_item(width, 16);
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
+                NESynthPattern* pattern = nesynth_any_pattern_at(state.channel, i) ? nesynth_get_pattern_at(state.channel, i) : NULL;
+                if (pattern) ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "Pattern %d", nesynth_get_pattern_id(pattern) + 1);
             ui_end();
             ui_next();
         }
@@ -100,50 +206,39 @@ void window_piano_roll(float w, float h) {
     ui_end();
     ui_subwindow(w - 128, h - 32);
         ui_setup_offset(true, true);
-        for (int i = 0; i < patterns; i++) {
-            if (!ui_inview(width, 12*12*9)) {
-                ui_dummy(width, 0);
-                continue;
+        ui_item(width * patterns, 12*12*9);
+            int num_notes = 0;
+            NoteProperties* notes = get_notes(width, w - 128, &num_notes, NESynthNoteType_Instrument);
+            NESynthNote* hover = update_notes(width, notes, num_notes, NESynthNoteType_Instrument);
+            ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(48));
+            for (int i = 0; i < 12 * 9; i++) {
+                int tone = i % 12;
+                if (tone % 2 == (tone < 7)) ui_draw_rectangle(AUTO, i * 12, AUTO, 12, GRAY(32));
+                ui_draw_line(AUTO, i * 12 + 11, AUTO, AUTO, GRAY(16));
             }
-            ui_item(width, 12*12*9);
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(48));
-                for (int i = 0; i < 12 * 9; i++) {
-                    int tone = i % 12;
-                    if (tone % 2 == (tone < 7)) ui_draw_rectangle(AUTO, i * 12, AUTO, 12, GRAY(32));
-                    ui_draw_line(AUTO, i * 12 + 11, AUTO, AUTO, GRAY(16));
-                }
-                ui_draw_line(width * 0 / 4, AUTO, AUTO, AUTO, GRAY(16));
+            for (int i = ui_scroll_x() / width; i < (ui_scroll_x() + w - 128) / width; i++) {
+                if (i >= patterns) break;
+                ui_draw_rectangle(i * width - 2, AUTO, 3, AUTO, GRAY(16));
                 if (ui_zoom() >= 0.25) {
-                    draw_line(4, GRAY(16), 0, width);
+                    draw_line(4, GRAY(16), i * width, width);
                     int num_lines = magnet;
                     if (ui_zoom() < 8 && num_lines > 32) num_lines = 32;
                     if (ui_zoom() < 4 && num_lines > 16) num_lines = 16;
-                    if (ui_zoom() >= 2) {
-                        draw_line(num_lines, GRAYA(16, 0.5), width * 0 / 4, width / 4);
-                        draw_line(num_lines, GRAYA(16, 0.5), width * 1 / 4, width / 4);
-                        draw_line(num_lines, GRAYA(16, 0.5), width * 2 / 4, width / 4);
-                        draw_line(num_lines, GRAYA(16, 0.5), width * 3 / 4, width / 4);
-                    }
+                    if (ui_zoom() >= 2) draw_line(num_lines * 4, GRAYA(16, 0.5), i * width, width);
                 }
-                ui_draw_line(width * 4 / 4, AUTO, AUTO, AUTO, GRAY(16));
-                update_notes(i, width);
-                NESynthPattern* pattern = nesynth_any_pattern_at(state.channel, i) ? nesynth_get_pattern_at(state.channel, i) : NULL;
-                if (pattern) {
-                    NESynthIter* iter = nesynth_iter_notes(pattern, NESynthNoteType_Instrument);
-                    while (nesynth_iter_next(iter)) {
-                        NESynthNote* note = nesynth_iter_get(iter);
-                        float note_value = *nesynth_base_note(note) - NESYNTH_NOTE(C, 0);
-                        float x = *nesynth_note_start(note) * width / 4;
-                        float y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_base_note(note)) * 12;
-                        float w = *nesynth_note_length(note) * width / 4;
-                        ui_draw_rectangle(x + 0, y, w - 0, 12, GRAY(16));
-                        ui_draw_rectangle(x + 1, y, w - 1, 11, GRAY(224));
-                        int octave = note_value / 12;
-                        int tone = roundf(note_value - octave * 12);
-                        ui_text(x + 2, y + 2, GRAY(16), "%s%d", tones[tone], octave);
-                    }
-                }
-            ui_end();
-        }
+            }
+            for (int i = 0; i < num_notes; i++) {
+                float note_value = *nesynth_base_note(notes[i].note) - NESYNTH_NOTE(C, 0);
+                float x = notes[i].start * width / 4;
+                float y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_base_note(notes[i].note)) * 12;
+                float w = (notes[i].end - notes[i].start) * width / 4;
+                ui_draw_rectangle(x + 0, y + 0, w - 0, 12, notes[i].note == hover ? GRAY(224) : GRAY(16));
+                ui_draw_rectangle(x + 1, y + 1, w - 2, 10, GRAY(224));
+                int octave = note_value / 12;
+                int tone = roundf(note_value - octave * 12);
+                ui_text(x + 2, y + 2, GRAY(16), "%s%d", tones[tone], octave);
+            }
+            free(notes);
+        ui_end();
     ui_end();
 }
