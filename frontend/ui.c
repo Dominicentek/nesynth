@@ -112,7 +112,7 @@ static void ui_clip(SDL_Rect* out, SDL_Rect* rect1, SDL_Rect* rect2) {
 }
 
 static bool ui_intersects_node(float x, float y) {
-    return x >= curr_node->x && y >= curr_node->y && x < curr_node->x + curr_node->w && y < curr_node->y + curr_node->h;
+    return x >= curr_clip->rect.x && y >= curr_clip->rect.y && x < curr_clip->rect.x + curr_clip->rect.w && y < curr_clip->rect.y + curr_clip->rect.h;
 }
 
 static UINode* ui_make_node(UINodeType type, float x, float y, float w, float h) {

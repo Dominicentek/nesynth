@@ -52,6 +52,7 @@ void window_patterns(float w, float h) {
                 int color = ui_hovered(false, true) ? 64 : 32;
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
                 ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "%s", channel_names[nesynth_get_channel_type(nesynth_iter_get(iter))]);
+                if (ui_clicked()) state.channel = nesynth_iter_get(iter);
             ui_end();
             ui_next();
             curr_pos += channel_height;
@@ -67,6 +68,7 @@ void window_patterns(float w, float h) {
                 int color = i % 2 ? 32 : 48;
                 ui_item(ui_zoom() * 160, fmodf(curr_pos + channel_height, 1) < 0.5 ? floorf(channel_height) : ceilf(channel_height));
                     ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
+                    if (ui_clicked()) state.channel = channel;
                     if (nesynth_any_pattern_at(channel, i) || ui_clicked()) {
                         NESynthPattern* pattern = nesynth_get_pattern_at(channel, i);
                         int id = nesynth_get_pattern_id(pattern);
