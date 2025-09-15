@@ -51,24 +51,33 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
         NESynthNote* note = curr_note->note;
         float prev_base = *nesynth_base_note(note);
         float prev_start = *nesynth_note_start(note);
-        float frel_pos = fmodf(fsnap_pos, 4);
-        float crel_pos = fmodf(csnap_pos, 4);
+        float frel_pos = fsnap_pos - curr_note->pattern_pos * 4;
+        float crel_pos = csnap_pos - curr_note->pattern_pos * 4;
         switch (curr_drag_action) {
-            case Drag_Move:
+            case Drag_Move: {
+                float new_start = *nesynth_note_start(note) + frel_pos - drag_offset;
+                if (new_start < 0) new_start = 0;
+                else if (new_start + *nesynth_note_length(note) > 4) new_start = 4 - *nesynth_note_length(note);
+                else drag_offset = frel_pos;
                 *nesynth_base_note(note) = pitch;
                 *nesynth_slide_note(note) += *nesynth_base_note(note) - prev_base;
-                *nesynth_note_start(note) += frel_pos - fmodf(drag_offset, 4);
-                break;
-            case Drag_ResizeStart:
-                *nesynth_note_start(note) = frel_pos;
-                *nesynth_note_length(note) -= *nesynth_note_start(note) - prev_start;
-                break;
-            case Drag_ResizeEnd:
-                if (crel_pos - *nesynth_note_start(note) > 0) 
-                    *nesynth_note_length(note) = crel_pos - *nesynth_note_start(note);
-                break;
+                *nesynth_note_start(note) = new_start;
+            } break;
+            case Drag_ResizeStart: {
+                float new_start = frel_pos < 0 ? 0 : frel_pos;
+                float new_length = *nesynth_note_length(note) - new_start + prev_start;
+                if (new_length > 0) {
+                    *nesynth_note_start(note) = new_start;
+                    *nesynth_note_length(note) = new_length;
+                }
+            } break;
+            case Drag_ResizeEnd: {
+                float new_length = crel_pos - *nesynth_note_start(note);
+                if (new_length <= 0) new_length = *nesynth_note_length(note);
+                if (crel_pos > 4) new_length = 4 - *nesynth_note_start(note);
+                *nesynth_note_length(note) = new_length;
+            } break;
         }
-        drag_offset = fsnap_pos;
         return note;
     }
     if (curr_note) free(curr_note);
@@ -84,7 +93,7 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
         if (hover) {
             float edge_tolerance = EDGE_TOLERANCE / width * 4;
             curr_note = malloc(sizeof(NoteProperties));
-            drag_offset = pos;
+            drag_offset = pos - hover->pattern_pos * 4;
             memcpy(curr_note, hover, sizeof(NoteProperties));
             if (pos >= hover->end - edge_tolerance) curr_drag_action = Drag_ResizeEnd;
             else if (pos < hover->start + edge_tolerance) curr_drag_action = Drag_ResizeStart;

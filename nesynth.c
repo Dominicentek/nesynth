@@ -520,14 +520,6 @@ void nesynth_delete_note(NESynthNote* note) {
     nesynth_destroy_note(note);
 }
 
-void nesynth_move_note(NESynthNote* note, float position) {
-
-}
-
-void nesynth_resize_note(NESynthNote* note, float length) {
-
-}
-
 float* nesynth_base_note(NESynthNote* note) {
     return &note->base_note;
 }
