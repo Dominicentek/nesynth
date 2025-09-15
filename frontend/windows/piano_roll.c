@@ -7,6 +7,7 @@ typedef struct {
     NESynthNote* note;
     float start, end;
     int pattern_pos, index;
+    float cutoff;
 } NoteProperties;
 
 static const char* tones[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
@@ -50,31 +51,31 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
     if (ui_mouse_down() && curr_note) {
         NESynthNote* note = curr_note->note;
         float prev_base = *nesynth_base_note(note);
-        float prev_start = *nesynth_note_start(note);
+        float prev_start = nesynth_get_note_start(note);
         float frel_pos = fsnap_pos - curr_note->pattern_pos * 4;
         float crel_pos = csnap_pos - curr_note->pattern_pos * 4;
         switch (curr_drag_action) {
             case Drag_Move: {
-                float new_start = *nesynth_note_start(note) + frel_pos - drag_offset;
+                float new_start = nesynth_get_note_start(note) + frel_pos - drag_offset;
                 if (new_start < 0) new_start = 0;
                 else if (new_start + *nesynth_note_length(note) > 4) new_start = 4 - *nesynth_note_length(note);
                 else drag_offset = frel_pos;
                 *nesynth_base_note(note) = pitch;
                 *nesynth_slide_note(note) += *nesynth_base_note(note) - prev_base;
-                *nesynth_note_start(note) = new_start;
+                nesynth_set_note_start(note, new_start);
             } break;
             case Drag_ResizeStart: {
                 float new_start = frel_pos < 0 ? 0 : frel_pos;
                 float new_length = *nesynth_note_length(note) - new_start + prev_start;
                 if (new_length > 0) {
-                    *nesynth_note_start(note) = new_start;
+                    nesynth_set_note_start(note, new_start);
                     *nesynth_note_length(note) = new_length;
                 }
             } break;
             case Drag_ResizeEnd: {
-                float new_length = crel_pos - *nesynth_note_start(note);
+                float new_length = crel_pos - nesynth_get_note_start(note);
                 if (new_length <= 0) new_length = *nesynth_note_length(note);
-                if (crel_pos > 4) new_length = 4 - *nesynth_note_start(note);
+                if (crel_pos > 4) new_length = 4 - nesynth_get_note_start(note);
                 *nesynth_note_length(note) = new_length;
             } break;
         }
@@ -93,7 +94,7 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
         if (hover) {
             float edge_tolerance = EDGE_TOLERANCE / width * 4;
             curr_note = malloc(sizeof(NoteProperties));
-            drag_offset = pos - hover->pattern_pos * 4;
+            drag_offset = fsnap_pos - hover->pattern_pos * 4;
             memcpy(curr_note, hover, sizeof(NoteProperties));
             if (pos >= hover->end - edge_tolerance) curr_drag_action = Drag_ResizeEnd;
             else if (pos < hover->start + edge_tolerance) curr_drag_action = Drag_ResizeStart;
@@ -129,15 +130,21 @@ static NoteProperties* get_notes(float pattern_width, float width, int* num_note
         while (nesynth_iter_next(note_iter)) {
             index++;
             NESynthNote* note = nesynth_iter_get(note_iter);
-            if (start - i * 4 >= *nesynth_note_start(note) + *nesynth_note_length(note) || end - i * 4 < *nesynth_note_start(note)) continue;
+            if (start - i * 4 >= nesynth_get_note_start(note) + *nesynth_note_length(note) || end - i * 4 < nesynth_get_note_start(note)) continue;
+            if (*num_notes != 0) {
+                NoteProperties* prev = &notes[*num_notes - 1];
+                prev->cutoff = (nesynth_get_note_start(note) - nesynth_get_note_start(prev->note)) / *nesynth_note_length(prev->note);
+                if (prev->cutoff > 1) prev->cutoff = 1;
+            }
             (*num_notes)++;
             notes = realloc(notes, sizeof(NoteProperties) * *num_notes);
             notes[*num_notes - 1] = (NoteProperties){
                 .note = note,
-                .start = i * 4 + *nesynth_note_start(note),
-                .end   = i * 4 + *nesynth_note_start(note) + *nesynth_note_length(note),
+                .start = i * 4 + nesynth_get_note_start(note),
+                .end   = i * 4 + nesynth_get_note_start(note) + *nesynth_note_length(note),
                 .index = index,
                 .pattern_pos = i,
+                .cutoff = 1,
             };
         }
     }
@@ -240,11 +247,22 @@ void window_piano_roll(float w, float h) {
                 float x = notes[i].start * width / 4;
                 float y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_base_note(notes[i].note)) * 12;
                 float w = (notes[i].end - notes[i].start) * width / 4;
+                float cutoff = notes[i].cutoff * (w - 2);
                 ui_draw_rectangle(x + 0, y + 0, w - 0, 12, notes[i].note == hover ? GRAY(224) : GRAY(16));
-                ui_draw_rectangle(x + 1, y + 1, w - 2, 10, GRAY(224));
+                ui_draw_rectangle(x + 1, y + 1, cutoff, 10, GRAY(224));
+                ui_draw_rectangle(x + 1 + cutoff, y + 1, (w - 2) - cutoff, 10, GRAYA(224, 0.25));
                 int octave = note_value / 12;
                 int tone = roundf(note_value - octave * 12);
-                ui_text(x + 2, y + 2, GRAY(16), "%s%d", tones[tone], octave);
+                if (w > 8) {
+                    if (*nesynth_attack_note(notes[i].note)) ui_draw_rectangle(x + 2, y + 2, 4, 8, GRAY(16));
+                    else {
+                        ui_draw_rectangle(x + 2, y + 2, 4, 1, GRAY(16));
+                        ui_draw_rectangle(x + 2, y + 2, 1, 8, GRAY(16));
+                        ui_draw_rectangle(x + 2, y + 2 + 7, 4, 1, GRAY(16));
+                        ui_draw_rectangle(x + 2 + 3, y + 2, 1, 8, GRAY(16));
+                    }
+                }
+                if (w > 30) ui_text(x + 8, y + 2, GRAY(16), "%s%d", tones[tone], octave);
             }
             free(notes);
         ui_end();

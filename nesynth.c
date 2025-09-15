@@ -121,10 +121,24 @@ static void linkedlist_destroy(NESynthLinkedList* list);
 #define linkedlist_last() (__next == __frst)
 
 #define linkedlist_delete() ({ \
-    __curr->next->prev = __curr->prev; \
-    __curr->prev->next = __curr->next; \
-    free(__curr); \
-}) \
+    if (__curr->next == __curr) { \
+        __curr->prev = __curr->next = __curr->item = NULL; \
+        break; \
+    } \
+    else if (__curr == __frst) { \
+        __curr->item = __curr->next->item; \
+        __curr->next->next->prev = __curr; \
+        __curr->next = __curr->next->next; \
+        free(__next); \
+        __next = __curr->next; \
+    } \
+    else { \
+        __curr->next->prev = __curr->prev; \
+        __curr->prev->next = __curr->next; \
+        free(__curr); \
+    } \
+    linkedlist_continue(); \
+})
 
 #define linkedlist_continue() ({ \
     __curr = __next; \
@@ -168,13 +182,23 @@ static void linkedlist_add(NESynthLinkedList* list, void* value) {
 static int linkedlist_add_sorted(NESynthLinkedList* list, void* value, int(*comp)(void*, void*)) {
     int index = 0;
     linkedlist_foreach(list, {
-        if (comp(curr, value) < 0) {
+        if (comp(value, curr) < 0) {
             NESynthLinkedList* item = linkedlist_create();
-            item->item = value;
-            item->prev = __curr->prev;
-            item->next = __curr;
-            __curr->prev->next = item;
-            __curr->prev = item;
+            if (index == 0) {
+                item->item = __curr->item;
+                item->next = __curr->next;
+                item->prev = __curr;
+                __curr->next->prev = item;
+                __curr->next = item;
+                __curr->item = value;
+            }
+            else {
+                item->item = value;
+                item->prev = __curr->prev;
+                item->next = __curr;
+                __curr->prev->next = item;
+                __curr->prev = item;
+            }
             return index;
         }
         index++;
@@ -532,8 +556,14 @@ bool* nesynth_attack_note(NESynthNote* note) {
     return &note->attack;
 }
 
-float* nesynth_note_start(NESynthNote* note) {
-    return &note->start;
+float nesynth_get_note_start(NESynthNote* note) {
+    return note->start;
+}
+
+void nesynth_set_note_start(NESynthNote* note, float start) {
+    note->start = start;
+    linkedlist_del(note->parent->notes[note->type], note);
+    linkedlist_add_sorted(note->parent->notes[note->type], note, (void*)compare_notes);
 }
 
 float* nesynth_note_length(NESynthNote* note) {

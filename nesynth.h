@@ -106,8 +106,9 @@ void nesynth_delete_note(NESynthNote* note);
 float* nesynth_base_note(NESynthNote* note);
 float* nesynth_slide_note(NESynthNote* note);
 bool* nesynth_attack_note(NESynthNote* note);
-float* nesynth_note_start(NESynthNote* note);
 float* nesynth_note_length(NESynthNote* note);
+float nesynth_get_note_start(NESynthNote* note);
+void nesynth_set_note_start(NESynthNote* note, float start);
 NESynthInstrument** nesynth_note_instrument(NESynthNote* note);
 
 int nesynth_nodetable_num_nodes(NESynthNodeTable* node_table);
