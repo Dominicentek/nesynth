@@ -133,7 +133,7 @@ static NoteProperties* get_notes(float pattern_width, float width, int* num_note
             if (start - i * 4 >= nesynth_get_note_start(note) + *nesynth_note_length(note) || end - i * 4 < nesynth_get_note_start(note)) continue;
             if (*num_notes != 0) {
                 NoteProperties* prev = &notes[*num_notes - 1];
-                prev->cutoff = (nesynth_get_note_start(note) - nesynth_get_note_start(prev->note)) / *nesynth_note_length(prev->note);
+                prev->cutoff = (nesynth_get_note_start(note) + i * 4 - prev->start) / *nesynth_note_length(prev->note);
                 if (prev->cutoff > 1) prev->cutoff = 1;
             }
             (*num_notes)++;
@@ -247,19 +247,19 @@ void window_piano_roll(float w, float h) {
                 float x = notes[i].start * width / 4;
                 float y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_base_note(notes[i].note)) * 12;
                 float w = (notes[i].end - notes[i].start) * width / 4;
-                float cutoff = notes[i].cutoff * (w - 2);
-                ui_draw_rectangle(x + 0, y + 0, w - 0, 12, notes[i].note == hover ? GRAY(224) : GRAY(16));
-                ui_draw_rectangle(x + 1, y + 1, cutoff, 10, GRAY(224));
-                ui_draw_rectangle(x + 1 + cutoff, y + 1, (w - 2) - cutoff, 10, GRAYA(224, 0.25));
+                float cutoff = notes[i].cutoff * (w - 1);
+                ui_draw_rectangle(x - 1, y - 1, w + 1, 13, notes[i].note == hover ? GRAY(224) : GRAY(16));
+                ui_draw_rectangle(x + 0, y + 0, cutoff, 11, GRAY(224));
+                ui_draw_rectangle(x + 0 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, GRAYA(224, 0.25));
                 int octave = note_value / 12;
                 int tone = roundf(note_value - octave * 12);
                 if (w > 8) {
-                    if (*nesynth_attack_note(notes[i].note)) ui_draw_rectangle(x + 2, y + 2, 4, 8, GRAY(16));
+                    if (*nesynth_attack_note(notes[i].note)) ui_draw_rectangle(x + 1, y + 1, 4, 9, GRAY(16));
                     else {
-                        ui_draw_rectangle(x + 2, y + 2, 4, 1, GRAY(16));
-                        ui_draw_rectangle(x + 2, y + 2, 1, 8, GRAY(16));
-                        ui_draw_rectangle(x + 2, y + 2 + 7, 4, 1, GRAY(16));
-                        ui_draw_rectangle(x + 2 + 3, y + 2, 1, 8, GRAY(16));
+                        ui_draw_rectangle(x + 1, y + 1, 4, 1, GRAY(16));
+                        ui_draw_rectangle(x + 1, y + 1, 1, 9, GRAY(16));
+                        ui_draw_rectangle(x + 1, y + 1 + 7, 4, 1, GRAY(16));
+                        ui_draw_rectangle(x + 1 + 3, y + 1, 1, 9, GRAY(16));
                     }
                 }
                 if (w > 30) ui_text(x + 8, y + 2, GRAY(16), "%s%d", tones[tone], octave);
