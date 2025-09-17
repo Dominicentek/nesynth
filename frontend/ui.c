@@ -677,6 +677,10 @@ void ui_dragndrop(char* id) {
         dragndrop_pos_y = y - curr_node->y;
     }
     else if (!ui_is_dragndropped()) return;
+    UINode* window = curr_node;
+    while (window->type != UINodeType_Window) window = window->parent;
+    if (y < window->y             + 64) window->info->scroll_y -= 2;
+    if (y > window->y + window->h - 64) window->info->scroll_y += 2;
     curr_node->x = x - dragndrop_pos_x;
     curr_node->y = y - dragndrop_pos_y;
     curr_clip->rect.x = x - dragndrop_pos_x;

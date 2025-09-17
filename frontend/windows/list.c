@@ -33,7 +33,7 @@ void window_list(float w, float h, const char* title, List* list, void* selected
                 if (ui_right_clicked()) ui_menu("Edit\0Rename\0Delete\0", NULL);
                 ui_dragndrop(ui_idptr(list->items[i].item));
                 if (ui_is_dragndropped()) {
-                    int new_i = ui_mouse_y(UI_ParentRelative) / 16;
+                    int new_i = (ui_mouse_y(UI_ParentRelative) + ui_scroll_y()) / 16;
                     if (new_i < 0) new_i = 0;
                     if (new_i >= list->num_items) new_i = list->num_items - 1;
                     arrmove(list->items, i, new_i, sizeof(ListItem));
