@@ -88,7 +88,8 @@ static uint64_t start_time;
 static char** curr_menu = NULL;
 static float menu_pos_x, menu_pos_y;
 static float menu_width, menu_height;
-static void(*menu_func)(int index);
+static void(*menu_func)(int index, void* data);
+static void* menu_data;
 static bool menu_just_opened;
 static int draw_priority, num_draw_commands;
 
@@ -367,7 +368,7 @@ static UIWindowInfo* ui_find_window_info(UIWindow window) {
     return curr;
 }
 
-static void ui_print_index(int index) {
+static void ui_print_index(int index, void* data) {
     printf("Selected menu index %d\n", index);
 }
 
@@ -393,7 +394,7 @@ static void ui_handle_menu() {
     while (curr_menu[ptr]) {
         if (ptr == selected) {
             ui_draw_rectangle(1, ptr * 10 + 1, menu_width - 2, 12, GRAY(128));
-            if (clicked) (menu_func ? menu_func : ui_print_index)(ptr);
+            if (clicked) (menu_func ? menu_func : ui_print_index)(ptr, menu_data);
         }
         ui_text(3, ptr * 10 + 3, GRAY(255), "%s", curr_menu[ptr]);
         ptr++;
@@ -846,7 +847,7 @@ void ui_text_positioned(float x, float y, float w, float h, float anchor_x, floa
     cmd->text = str;
 }
 
-void ui_menu(const char* items, void(*on_select)(int index)) {
+void ui_menu(const char* items, void(*on_select)(int index, void* data), void* data) {
     int num_items = 0;
     int ptr = 0;
     while (true) {
@@ -868,6 +869,7 @@ void ui_menu(const char* items, void(*on_select)(int index)) {
     menu_width = max_len * 6 + 6;
     menu_height = num_items * 10 + 4;
     menu_func = on_select;
+    menu_data = data;
     menu_just_opened = true;
     curr_menu[num_items] = NULL;
     SDL_GetMouseState(&menu_pos_x, &menu_pos_y);

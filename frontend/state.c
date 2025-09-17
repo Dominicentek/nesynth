@@ -37,3 +37,18 @@ void state_add_song() {
     *nesynth_song_bpm(state.song) = 120;
     state_list_add(&songs, state.song, "Song %d");
 }
+
+void state_delete(List* list, void* item) {
+    int index = -1;
+    for (int i = 0; i < list->num_items; i++) {
+        if (list->items[i].item == item) {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1) return;
+    free(list->items[index].name);
+    list->num_items--;
+    memmove(list->items + index, list->items + (index + 1), sizeof(ListItem) * (list->num_items - index));
+    list->items = realloc(list->items, sizeof(ListItem) * list->num_items);
+}

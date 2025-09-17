@@ -18,5 +18,6 @@ extern List instruments;
 void state_init();
 void state_add_instrument();
 void state_add_song();
+void state_delete(List* list, void* item);
 
 #endif

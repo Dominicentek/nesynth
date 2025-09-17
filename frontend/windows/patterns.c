@@ -8,7 +8,7 @@ static const char* channel_names[] = {
     "Waveform"
 };
 
-static void add_channel(int type) {
+static void add_channel(int type, void* data) {
     state.channel = nesynth_add_channel(state.song, type);
 }
 
@@ -29,7 +29,7 @@ void window_patterns(float w, float h) {
     ui_item(16, 16);
         ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
         ui_text(4, 4, GRAY(255), "+");
-        if (ui_clicked()) ui_menu("Square\0Triangle\0Noise\0Waveform\0", add_channel);
+        if (ui_clicked()) ui_menu("Square\0Triangle\0Noise\0Waveform\0", add_channel, NULL);
     ui_end();
     if (patterns == 0) return;
     ui_subwindow(w - 128, 16);

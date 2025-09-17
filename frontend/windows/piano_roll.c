@@ -22,7 +22,7 @@ static void draw_line(int count, int color, float offset, float width) {
     }
 }
 
-static void set_magnet(int index) {
+static void set_magnet(int index, void* data) {
     switch (index) {
         case 0: magnet = 1; break;
         case 1: magnet = 2; break;
@@ -168,7 +168,7 @@ void window_piano_roll(float w, float h) {
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
             ui_image(magnet_enabled ? "images/magnet_on.png" : "images/magnet_off.png", 0, 0, 16, 16);
             if (ui_clicked()) magnet_enabled ^= 1;
-            if (ui_right_clicked()) ui_menu("1/1\0" "1/2\0" "1/4\0" "1/6\0" "1/8\0" "1/16\0" "1/32\0" "1/64\0", set_magnet);
+            if (ui_right_clicked()) ui_menu("1/1\0" "1/2\0" "1/4\0" "1/6\0" "1/8\0" "1/16\0" "1/32\0" "1/64\0", set_magnet, NULL);
         ui_end();
         ui_item(16, 16);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
@@ -248,18 +248,18 @@ void window_piano_roll(float w, float h) {
                 float y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_base_note(notes[i].note)) * 12;
                 float w = (notes[i].end - notes[i].start) * width / 4;
                 float cutoff = notes[i].cutoff * (w - 1);
-                ui_draw_rectangle(x - 1, y - 1, w + 1, 13, notes[i].note == hover ? GRAY(224) : GRAY(16));
-                ui_draw_rectangle(x + 0, y + 0, cutoff, 11, GRAY(224));
-                ui_draw_rectangle(x + 0 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, GRAYA(224, 0.25));
+                ui_draw_rectangle(x + 0, y - 1, w + 1, 13, notes[i].note == hover ? GRAY(224) : GRAY(16));
+                ui_draw_rectangle(x + 1, y + 0, cutoff, 11, GRAY(224));
+                ui_draw_rectangle(x + 1 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, GRAYA(224, 0.25));
                 int octave = note_value / 12;
                 int tone = roundf(note_value - octave * 12);
                 if (w > 8) {
-                    if (*nesynth_attack_note(notes[i].note)) ui_draw_rectangle(x + 1, y + 1, 4, 9, GRAY(16));
+                    if (*nesynth_attack_note(notes[i].note)) ui_draw_rectangle(x + 2, y + 1, 4, 9, GRAY(16));
                     else {
-                        ui_draw_rectangle(x + 1, y + 1, 4, 1, GRAY(16));
-                        ui_draw_rectangle(x + 1, y + 1, 1, 9, GRAY(16));
-                        ui_draw_rectangle(x + 1, y + 1 + 7, 4, 1, GRAY(16));
-                        ui_draw_rectangle(x + 1 + 3, y + 1, 1, 9, GRAY(16));
+                        ui_draw_rectangle(x + 2, y + 1, 4, 1, GRAY(16));
+                        ui_draw_rectangle(x + 2, y + 1, 1, 9, GRAY(16));
+                        ui_draw_rectangle(x + 2, y + 1 + 7, 4, 1, GRAY(16));
+                        ui_draw_rectangle(x + 2 + 3, y + 1, 1, 9, GRAY(16));
                     }
                 }
                 if (w > 30) ui_text(x + 8, y + 2, GRAY(16), "%s%d", tones[tone], octave);
