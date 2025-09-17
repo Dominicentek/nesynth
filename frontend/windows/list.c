@@ -13,6 +13,7 @@ static void arrmove(void* arr, size_t from, size_t to, size_t size) {
 void window_list(float w, float h, const char* title, List* list, void* selected, void(*create_item)()) {
     ui_scrollwheel();
     ui_setup_offset(false, false);
+    ui_limit_scroll(0, 0, 0, 16 + list->num_items * 16);
     ui_item(w - 16, 16);
         ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
         ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, GRAY(255), title);
