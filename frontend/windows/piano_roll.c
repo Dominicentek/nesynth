@@ -35,6 +35,34 @@ static void set_magnet(int index, void* data) {
     }
 }
 
+static void note_menu(int index, void* data) {
+    NESynthNote* note = data;
+    switch (index) {
+        case 0: // delete
+            nesynth_delete_note(note);
+            break;
+        case 1: // toggle attack
+            *nesynth_attack_note(note) ^= 1;
+            break;
+        case 2: // toggle slide
+            *nesynth_slide_note(note) =
+                *nesynth_slide_note(note) == *nesynth_base_note(note)
+                ? *nesynth_base_note(note) - 4
+                : *nesynth_base_note(note);
+            break;
+        case 3: // make instrument current
+            state_select_instrument(*nesynth_note_instrument(note));
+            break;
+        case 4: // replace with current instrument
+            *nesynth_note_instrument(note) = state_instrument();
+            break;
+        case 5: // snap
+            nesynth_set_note_start(note, floorf(nesynth_get_note_start(note) * magnet) / magnet);
+            *nesynth_note_length(note) = ceilf(*nesynth_note_length(note) * magnet) / magnet;
+            break;
+    }
+}
+
 static NESynthNote* update_notes(float width, NoteProperties* notes, int num_notes, NESynthNoteType type) {
     static NoteProperties* curr_note = NULL;
     static float drag_offset;
@@ -243,26 +271,31 @@ void window_piano_roll(float w, float h) {
                 }
             }
             for (int i = 0; i < num_notes; i++) {
-                float note_value = *nesynth_base_note(notes[i].note) - NESYNTH_NOTE(C, 0);
+                float base = *nesynth_base_note(notes[i].note);
+                float slide = *nesynth_slide_note(notes[i].note);
                 float x = notes[i].start * width / 4;
                 float y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_base_note(notes[i].note)) * 12;
                 float w = (notes[i].end - notes[i].start) * width / 4;
                 float cutoff = notes[i].cutoff * (w - 1);
+                float slide_y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_slide_note(notes[i].note)) * 12;
+                if (slide < base) ui_draw_triangle(x, y + 12, x + w, y + 12, x + w, slide_y + 12, GRAYA(224, 0.25));
+                if (slide > base) ui_draw_triangle(x, y, x + w, y, x + w, slide_y, GRAYA(224, 0.25));
                 ui_draw_rectangle(x + 0, y - 1, w + 1, 13, notes[i].note == hover ? GRAY(224) : GRAY(16));
                 ui_draw_rectangle(x + 1, y + 0, cutoff, 11, GRAY(224));
                 ui_draw_rectangle(x + 1 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, GRAYA(224, 0.25));
-                int octave = note_value / 12;
-                int tone = roundf(note_value - octave * 12);
+                int octave = (base - NESYNTH_NOTE(C, 0)) / 12;
+                int tone = roundf((base - NESYNTH_NOTE(C, 0)) - octave * 12);
                 if (w > 8) {
                     if (*nesynth_attack_note(notes[i].note)) ui_draw_rectangle(x + 2, y + 1, 4, 9, GRAY(16));
                     else {
                         ui_draw_rectangle(x + 2, y + 1, 4, 1, GRAY(16));
                         ui_draw_rectangle(x + 2, y + 1, 1, 9, GRAY(16));
-                        ui_draw_rectangle(x + 2, y + 1 + 7, 4, 1, GRAY(16));
+                        ui_draw_rectangle(x + 2, y + 1 + 8, 4, 1, GRAY(16));
                         ui_draw_rectangle(x + 2 + 3, y + 1, 1, 9, GRAY(16));
                     }
                 }
                 if (w > 30) ui_text(x + 8, y + 2, GRAY(16), "%s%d", tones[tone], octave);
+                if (ui_right_clicked() && notes[i].note == hover) ui_menu("Delete\0Toggle Attack\0Toggle Slide\0Make Instrument Current\0Replace with Current Instrument\0Snap", note_menu, hover);
             }
             free(notes);
         ui_end();

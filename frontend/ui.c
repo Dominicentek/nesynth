@@ -61,6 +61,7 @@ typedef enum {
     UIDrawType_GradientH,
     UIDrawType_GradientV,
     UIDrawType_Line,
+    UIDrawType_Triangle,
     UIDrawType_Image,
     UIDrawType_Text,
     UIDrawType_SetClip,
@@ -73,7 +74,7 @@ typedef struct UIDrawList {
     int priority;
     union { struct { int x, y; }; struct { int x1, y1; }; };
     union { struct { int w, h; }; struct { int x2, y2; }; };
-    union { char* text; Image* image; };
+    union { char* text; Image* image; struct { int x3, y3; }; };
     union { int color, color_from; }; int color_to;
     int srcx, srcy, srcw, srch;
 } UIDrawList;
@@ -278,6 +279,19 @@ static void ui_process_drawlist() {
                 SDL_SetRenderDrawColor(curr_renderer, (curr->color >> 24) & 0xFF, (curr->color >> 16) & 0xFF, (curr->color >> 8) & 0xFF, curr->color & 0xFF);
                 SDL_RenderLine(curr_renderer, curr->x1, curr->y1, curr->x2, curr->y2);
                 break;
+            case UIDrawType_Triangle: {
+                SDL_FColor color = (SDL_FColor){
+                    .r = ((curr->color >> 24) & 0xFF) / 255.f,
+                    .g = ((curr->color >> 16) & 0xFF) / 255.f,
+                    .b = ((curr->color >>  8) & 0xFF) / 255.f,
+                    .a = ((curr->color >>  0) & 0xFF) / 255.f,
+                };
+                SDL_RenderGeometry(curr_renderer, NULL, (SDL_Vertex[]){
+                    { (SDL_FPoint){ curr->x1, curr->y1 }, color, (SDL_FPoint){ 0, 0 }},
+                    { (SDL_FPoint){ curr->x2, curr->y2 }, color, (SDL_FPoint){ 0, 0 }},
+                    { (SDL_FPoint){ curr->x3, curr->y3 }, color, (SDL_FPoint){ 0, 0 }},
+                }, 3, NULL, 0);
+            } break;
             case UIDrawType_Image:
                 SDL_RenderTexture(curr_renderer, img_generate_texture(curr_renderer, curr->image),
                     RVAL_PTR((SDL_FRect){ .x = curr->srcx, .y = curr->srcy, .w = curr->srcw, .h = curr->srch }),
@@ -781,6 +795,14 @@ void ui_draw_line(float x1, float y1, float x2, float y2, int color) {
     cmd->y1 = y1 + curr_node->y;
     cmd->x2 = x2 + curr_node->x;
     cmd->y2 = y2 + curr_node->y;
+    cmd->color = color;
+}
+
+void ui_draw_triangle(float x1, float y1, float x2, float y2, float x3, float y3, int color) {
+    UIDrawList* cmd = ui_push_drawlist(UIDrawType_Triangle);
+    cmd->x1 = x1 + curr_node->x; cmd->y1 = y1 + curr_node->y;
+    cmd->x2 = x2 + curr_node->x; cmd->y2 = y2 + curr_node->y;
+    cmd->x3 = x3 + curr_node->x; cmd->y3 = y3 + curr_node->y;
     cmd->color = color;
 }
 
