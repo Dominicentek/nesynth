@@ -1,3 +1,4 @@
+#include "ui.h"
 #include "state.h"
 #include "windows/list.h"
 
@@ -19,6 +20,14 @@ static void arrmove(void* arr, size_t from, size_t to, size_t size) {
     memcpy((char*)arr + size * to, item, size);
 }
 
+static int state_generate_color(List* list) {
+    float seed = list->color_seed / 8.f;
+    float hue = fmodf(seed + 0.5f, 1);
+    float sat = -sinf((floorf(seed) / 6.f * M_PI * 2) + (M_PI / 2)) / 8 + 0.625f;
+    list->color_seed++;
+    return HSV(hue, sat, 1);
+}
+
 static int state_list_add(List* list, void* item, const char* default_name) {
     list->num_items++;
     list->items = realloc(list->items, sizeof(ListItem) * list->num_items);
@@ -27,6 +36,7 @@ static int state_list_add(List* list, void* item, const char* default_name) {
     memset(new, 0, sizeof(ListItem));
     new->item = item;
     new->name = default_name ? malloc(length + 1) : NULL;
+    new->color = state_generate_color(list);
     if (new->name) sprintf(new->name, default_name, list->num_items);
     return list->num_items - 1;
 }

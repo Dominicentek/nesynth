@@ -47,7 +47,7 @@ static void note_menu(int index, void* data) {
         case 2: // toggle slide
             *nesynth_slide_note(note) =
                 *nesynth_slide_note(note) == *nesynth_base_note(note)
-                ? *nesynth_base_note(note) - 4
+                ? *nesynth_base_note(note) + 4
                 : *nesynth_base_note(note);
             break;
         case 3: // make instrument current
@@ -224,9 +224,9 @@ void window_piano_roll(float w, float h) {
                 else ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, GRAY(255), "%d", i + 1);
             ui_end();
             ui_item(width, 16);
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
                 NESynthPattern* pattern = nesynth_any_pattern_at(state_channel(), i) ? nesynth_get_pattern_at(state_channel(), i) : NULL;
-                if (pattern) ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "Pattern %d", nesynth_get_pattern_id(pattern) + 1);
+                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, pattern ? state_pattern_item(pattern)->color : GRAY(color));
+                if (pattern) ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(16), "Pattern %d", nesynth_get_pattern_id(pattern) + 1);
             ui_end();
             ui_next();
         }
@@ -278,11 +278,13 @@ void window_piano_roll(float w, float h) {
                 float w = (notes[i].end - notes[i].start) * width / 4;
                 float cutoff = notes[i].cutoff * (w - 1);
                 float slide_y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_slide_note(notes[i].note)) * 12;
-                if (slide < base) ui_draw_triangle(x, y + 12, x + w, y + 12, x + w, slide_y + 12, GRAYA(224, 0.25));
-                if (slide > base) ui_draw_triangle(x, y, x + w, y, x + w, slide_y, GRAYA(224, 0.25));
+                int color = state_instrument_item(*nesynth_note_instrument(notes[i].note))->color;
+                int faded = (color & 0xFFFFFF00) | 0x3F;
+                if (slide < base) ui_draw_triangle(x, y + 12, x + w, y + 12, x + w, slide_y + 12, faded);
+                if (slide > base) ui_draw_triangle(x, y, x + w, y, x + w, slide_y, faded);
                 ui_draw_rectangle(x + 0, y - 1, w + 1, 13, notes[i].note == hover ? GRAY(224) : GRAY(16));
-                ui_draw_rectangle(x + 1, y + 0, cutoff, 11, GRAY(224));
-                ui_draw_rectangle(x + 1 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, GRAYA(224, 0.25));
+                ui_draw_rectangle(x + 1, y + 0, cutoff, 11, color);
+                ui_draw_rectangle(x + 1 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, faded);
                 int octave = (base - NESYNTH_NOTE(C, 0)) / 12;
                 int tone = roundf((base - NESYNTH_NOTE(C, 0)) - octave * 12);
                 if (w > 8) {

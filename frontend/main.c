@@ -4,7 +4,11 @@
 #include "windows.h"
 #include "state.h"
 
+#include <stdlib.h>
+#include <time.h>
+
 int main() {
+    srand(time(NULL));
     SDL_Window* window;
     SDL_Renderer* renderer;
     SDL_CreateWindowAndRenderer("NESynth", 1280, 720, 0, &window, &renderer);

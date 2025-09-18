@@ -90,8 +90,10 @@ void window_patterns(float w, float h) {
                         NESynthPattern* pattern = nesynth_get_pattern_at(channel, i);
                         int id = nesynth_get_pattern_id(pattern);
                         float h = (float)id / nesynth_num_unique_patterns(channel);
-                        ui_draw_rectangle(AUTO, 0, AUTO, 16, HSV(h, 1, 1));
-                        ui_draw_rectangle(AUTO, 16, AUTO, AUTO, HSVA(h, 1, 1, 0.5));
+                        int color = state_pattern_item(pattern)->color;
+                        int faded = (color & 0xFFFFFF00) | 0x7F;
+                        ui_draw_rectangle(AUTO, 0, AUTO, 16, color);
+                        ui_draw_rectangle(AUTO, 16, AUTO, AUTO, faded);
                         ui_text_positioned(AUTO, 0, AUTO, 16, AUTO, AUTO, AUTO, AUTO, GRAY(0), "Pattern %d", id + 1);
                     }
                 ui_end();

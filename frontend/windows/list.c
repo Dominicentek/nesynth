@@ -30,8 +30,9 @@ void window_list(float w, float h, const char* title, List* list, int* selected,
                     if (new_i >= list->num_items) new_i = list->num_items - 1;
                     state_move(list, i, new_i);
                 }
-                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, HSV((float)i / list->num_items, 1, 1));
-                ui_text(4, 4, i == *selected ? GRAY(255) : GRAY(16), list->items[i].name);
+                ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, list->items[i].color);
+                if (i == *selected) ui_text(4, 4, GRAY(16), ">");
+                ui_text(16, 4, GRAY(16), list->items[i].name);
             ui_end();
         }
         ui_item(w, h);

@@ -3,12 +3,14 @@
 
 typedef struct {
     int num_items;
+    int color_seed;
     struct ListItem* items;
 } List;
 
 typedef struct ListItem {
     char* name;
     void* item;
+    int color;
     List nested_list;
 } ListItem;
 
