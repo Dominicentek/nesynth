@@ -280,6 +280,7 @@ void window_piano_roll(float w, float h) {
                 float slide_y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_slide_note(notes[i].note)) * 12;
                 int color = state_instrument_item(*nesynth_note_instrument(notes[i].note))->color;
                 int faded = (color & 0xFFFFFF00) | 0x3F;
+                int secondary = GRAYA(16, 0.75);
                 if (slide < base) ui_draw_triangle(x, y + 12, x + w, y + 12, x + w, slide_y + 12, faded);
                 if (slide > base) ui_draw_triangle(x, y, x + w, y, x + w, slide_y, faded);
                 ui_draw_rectangle(x + 0, y - 1, w + 1, 13, notes[i].note == hover ? GRAY(224) : GRAY(16));
@@ -288,15 +289,15 @@ void window_piano_roll(float w, float h) {
                 int octave = (base - NESYNTH_NOTE(C, 0)) / 12;
                 int tone = roundf((base - NESYNTH_NOTE(C, 0)) - octave * 12);
                 if (w > 8) {
-                    if (*nesynth_attack_note(notes[i].note)) ui_draw_rectangle(x + 2, y + 1, 4, 9, GRAY(16));
+                    if (*nesynth_attack_note(notes[i].note)) ui_draw_rectangle(x + 2, y + 1, 4, 9, secondary);
                     else {
-                        ui_draw_rectangle(x + 2, y + 1, 4, 1, GRAY(16));
-                        ui_draw_rectangle(x + 2, y + 1, 1, 9, GRAY(16));
-                        ui_draw_rectangle(x + 2, y + 1 + 8, 4, 1, GRAY(16));
-                        ui_draw_rectangle(x + 2 + 3, y + 1, 1, 9, GRAY(16));
+                        ui_draw_rectangle(x + 2, y + 1, 4, 1, secondary);
+                        ui_draw_rectangle(x + 2, y + 1, 1, 9, secondary);
+                        ui_draw_rectangle(x + 2, y + 1 + 8, 4, 1, secondary);
+                        ui_draw_rectangle(x + 2 + 3, y + 1, 1, 9, secondary);
                     }
                 }
-                if (w > 30) ui_text(x + 8, y + 2, GRAY(16), "%s%d", tones[tone], octave);
+                if (w > 30) ui_text(x + 8, y + 2, secondary, "%s%d", tones[tone], octave);
                 if (ui_right_clicked() && notes[i].note == hover) ui_menu("Delete\0Toggle Attack\0Toggle Slide\0Make Instrument Current\0Replace with Current Instrument\0Snap", note_menu, hover);
             }
             free(notes);
