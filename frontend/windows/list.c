@@ -10,7 +10,7 @@ static void arrmove(void* arr, size_t from, size_t to, size_t size) {
     memcpy((char*)arr + size * to, item, size);
 }
 
-void window_list(float w, float h, const char* title, List* list, void* selected, const char* menu, void(*menu_handler)(int item, void* data), void(*create_item)()) {
+void window_list(float w, float h, const char* title, List* list, int* selected, const char* menu, void(*menu_handler)(int item, void* data), void(*create_item)()) {
     ui_scrollwheel();
     ui_setup_offset(false, false);
     ui_limit_scroll(0, 0, 0, 16 + list->num_items * 16);
@@ -29,7 +29,7 @@ void window_list(float w, float h, const char* title, List* list, void* selected
         ui_setup_offset(false, true);
         for (int i = 0; i < list->num_items; i++) {
             ui_item(w, 16);
-                if (ui_clicked()) *(void**)selected = list->items[i].item;
+                if (ui_clicked()) *selected = i;
                 if (ui_right_clicked()) ui_menu(menu, menu_handler, list->items[i].item);
                 ui_dragndrop(ui_idptr(list->items[i].item));
                 if (ui_is_dragndropped()) {
@@ -39,7 +39,7 @@ void window_list(float w, float h, const char* title, List* list, void* selected
                     arrmove(list->items, i, new_i, sizeof(ListItem));
                 }
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, HSV((float)i / list->num_items, 1, 1));
-                ui_text(4, 4, list->items[i].item == *(void**)selected ? GRAY(255) : GRAY(16), list->items[i].name);
+                ui_text(4, 4, i == *selected ? GRAY(255) : GRAY(16), list->items[i].name);
             ui_end();
         }
         ui_item(w, h);

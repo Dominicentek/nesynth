@@ -2,15 +2,16 @@
 #define LIST_H
 
 typedef struct {
-    char* name;
-    void* item;
-} ListItem;
-
-typedef struct {
     int num_items;
-    ListItem* items;
+    struct ListItem* items;
 } List;
 
-void window_list(float w, float h, const char* title, List* list, void* selected, const char* menu, void(*menu_handler)(int index, void* data), void(*create_item)());
+typedef struct ListItem {
+    char* name;
+    void* item;
+    List nested_list;
+} ListItem;
+
+void window_list(float w, float h, const char* title, List* list, int* selected, const char* menu, void(*menu_handler)(int index, void* data), void(*create_item)());
 
 #endif

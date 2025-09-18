@@ -3,12 +3,9 @@
 
 static void menu_handler(int index, void* data) {
     switch (index) {
-        case 0: {
-            if (instruments.num_items == 1) return;
-            if (state.instrument == data) state.instrument = instruments.items[instruments.items[0].item == data ? 1 : 0].item;
-            nesynth_delete_instrument(data);
-            state_delete(&instruments, data);
-        }
+        case 0:
+            state_delete_instrument(data);
+            break;
     }
 }
 

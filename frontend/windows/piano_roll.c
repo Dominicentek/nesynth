@@ -106,8 +106,8 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
             curr_note = malloc(sizeof(NoteProperties));
             *curr_note = (NoteProperties){
                 .note = nesynth_insert_note(
-                    nesynth_get_pattern_at(state.channel, fsnap_pos / 4),
-                    type, state.instrument, pitch, fmodf(fsnap_pos, 4), 1.f / magnet
+                    nesynth_get_pattern_at(state_channel(), fsnap_pos / 4),
+                    type, state_instrument(), pitch, fmodf(fsnap_pos, 4), 1.f / magnet
                 ),
                 .start = fsnap_pos, .end = csnap_pos + 1.f / magnet,
                 .pattern_pos = fsnap_pos / 4, .index = -1,
@@ -122,9 +122,9 @@ static NoteProperties* get_notes(float pattern_width, float width, int* num_note
     float end = (ui_scroll_x() + width) / pattern_width * 4;
     NoteProperties* notes = NULL;
     *num_notes = 0;
-    for (int i = 0; i < nesynth_song_get_length(state.song); i++) {
-        if (!nesynth_any_pattern_at(state.channel, i)) continue;
-        NESynthPattern* pattern = nesynth_get_pattern_at(state.channel, i);
+    for (int i = 0; i < nesynth_song_get_length(state_song()); i++) {
+        if (!nesynth_any_pattern_at(state_channel(), i)) continue;
+        NESynthPattern* pattern = nesynth_get_pattern_at(state_channel(), i);
         NESynthIter* note_iter = nesynth_iter_notes(pattern, note_type);
         int index = -1;
         while (nesynth_iter_next(note_iter)) {
@@ -152,7 +152,7 @@ static NoteProperties* get_notes(float pattern_width, float width, int* num_note
 }
 
 void window_piano_roll(float w, float h) {
-    int patterns = state.channel ? nesynth_song_get_length(state.song) : 0;
+    int patterns = nesynth_song_get_length(state_song());
     ui_middleclick();
     ui_update_zoom(128);
     ui_limit_scroll(0, 0, patterns * ui_zoom() * 160 + 128, 12*12*9 + 32);
@@ -197,7 +197,7 @@ void window_piano_roll(float w, float h) {
             ui_end();
             ui_item(width, 16);
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
-                NESynthPattern* pattern = nesynth_any_pattern_at(state.channel, i) ? nesynth_get_pattern_at(state.channel, i) : NULL;
+                NESynthPattern* pattern = nesynth_any_pattern_at(state_channel(), i) ? nesynth_get_pattern_at(state_channel(), i) : NULL;
                 if (pattern) ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "Pattern %d", nesynth_get_pattern_id(pattern) + 1);
             ui_end();
             ui_next();
