@@ -681,7 +681,7 @@ void* nesynth_iter_get(NESynthIter* iter) {
 
 // == RENDERER ==
 
-struct {
+static struct {
     NESynthSong* song;
     NESynthInstrument* instrument;
     NESynthNodeTable* nodetable;
