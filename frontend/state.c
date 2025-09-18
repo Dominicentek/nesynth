@@ -10,6 +10,15 @@ typeof(state) state;
 List songs;
 List instruments;
 
+static void arrmove(void* arr, size_t from, size_t to, size_t size) {
+    char item[size];
+    memcpy(item, (char*)arr + size * from, size);
+    if (from == to) return;
+    if (from < to) memmove((char*)arr + size * from, (char*)arr + size * (from + 1), size * (to - from));
+    if (from > to) memmove((char*)arr + size * (to + 1), (char*)arr + size * to, size * (from - to));
+    memcpy((char*)arr + size * to, item, size);
+}
+
 static int state_list_add(List* list, void* item, const char* default_name) {
     list->num_items++;
     list->items = realloc(list->items, sizeof(ListItem) * list->num_items);
@@ -45,8 +54,16 @@ void state_add_channel(NESynthChannelType type) {
     }[type]);
 }
 
-static void state_delete(List* list, int* curr, void* item) {
-    if (list->num_items <= 1 && curr) return;
+static void delete_whole_list(List* list) {
+    for (int i = 0; i < list->num_items; i++) {
+        free(list->items[i].name);
+        delete_whole_list(&list->items[i].nested_list);
+    }
+    free(list->items);
+}
+
+static bool state_delete(List* list, int* curr, void* item) {
+    if (list->num_items <= 1 && curr) return false;
     int index = -1;
     for (int i = 0; i < list->num_items; i++) {
         if (list->items[i].item == item) {
@@ -54,24 +71,29 @@ static void state_delete(List* list, int* curr, void* item) {
             break;
         }
     }
-    if (index == -1) return;
-    if (curr && *curr == index) *curr = index == 0;
+    if (index == -1) return false;
+    if (curr && *curr == list->num_items - 1) *curr = list->num_items - 2;
+    delete_whole_list(&list->items[index].nested_list);
     free(list->items[index].name);
     list->num_items--;
     memmove(list->items + index, list->items + (index + 1), sizeof(ListItem) * (list->num_items - index));
     list->items = realloc(list->items, sizeof(ListItem) * list->num_items);
+    return true;
 }
 
 void state_delete_instrument(NESynthInstrument* instrument) {
-    state_delete(&instruments, &state.instrument, instrument);
+    if (state_delete(&instruments, &state.instrument, instrument))
+        nesynth_delete_instrument(instrument);
 }
 
 void state_delete_song(NESynthSong* song) {
-    state_delete(&songs, &state.song, song);
+    if (state_delete(&songs, &state.song, song))
+        nesynth_delete_song(song);
 }
 
 void state_delete_channel(NESynthChannel* channel) {
-    state_delete(state_list_channels(), &state.channel, channel);
+    if (state_delete(state_list_channels(), &state.channel, channel))
+        nesynth_delete_channel(channel);
 }
 
 void state_delete_pattern(NESynthPattern* pattern) {
@@ -148,4 +170,8 @@ ListItem* state_pattern_item(NESynthPattern* pattern) {
     if (item) return item;
     int index = state_list_add(state_list_patterns(), pattern, "Pattern %d");
     return &state_list_patterns()->items[index];
+}
+
+void state_move(List* list, int from, int to) {
+    arrmove(list->items, from, to, sizeof(ListItem));
 }

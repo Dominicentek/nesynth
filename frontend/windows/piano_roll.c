@@ -115,7 +115,6 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
     for (int i = 0; i < num_notes; i++) {
         if (pos >= notes[i].start && pos < notes[i].end && pitch == *nesynth_base_note(notes[i].note)) {
             hover = &notes[i];
-            break;
         }
     }
     if (ui_clicked()) {
@@ -127,6 +126,7 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
             if (pos >= hover->end - edge_tolerance) curr_drag_action = Drag_ResizeEnd;
             else if (pos < hover->start + edge_tolerance) curr_drag_action = Drag_ResizeStart;
             else curr_drag_action = Drag_Move;
+            nesynth_set_note_start(hover->note, nesynth_get_note_start(hover->note));
         }
         else {
             drag_offset = fsnap_pos;

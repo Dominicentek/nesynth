@@ -1,14 +1,6 @@
 #include "list.h"
 #include "ui.h"
-
-static void arrmove(void* arr, size_t from, size_t to, size_t size) {
-    char item[size];
-    memcpy(item, (char*)arr + size * from, size);
-    if (from == to) return;
-    if (from < to) memmove((char*)arr + size * from, (char*)arr + size * (from + 1), size * (to - from));
-    if (from > to) memmove((char*)arr + size * (to + 1), (char*)arr + size * to, size * (from - to));
-    memcpy((char*)arr + size * to, item, size);
-}
+#include "state.h"
 
 void window_list(float w, float h, const char* title, List* list, int* selected, const char* menu, void(*menu_handler)(int item, void* data), void(*create_item)()) {
     ui_scrollwheel();
@@ -36,7 +28,7 @@ void window_list(float w, float h, const char* title, List* list, int* selected,
                     int new_i = (ui_mouse_y(UI_ParentRelative) + ui_scroll_y()) / 16;
                     if (new_i < 0) new_i = 0;
                     if (new_i >= list->num_items) new_i = list->num_items - 1;
-                    arrmove(list->items, i, new_i, sizeof(ListItem));
+                    state_move(list, i, new_i);
                 }
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, HSV((float)i / list->num_items, 1, 1));
                 ui_text(4, 4, i == *selected ? GRAY(255) : GRAY(16), list->items[i].name);

@@ -35,5 +35,6 @@ ListItem* state_instrument_item(NESynthInstrument* instrument);
 ListItem* state_song_item(NESynthSong* song);
 ListItem* state_channel_item(NESynthChannel* channel);
 ListItem* state_pattern_item(NESynthPattern* pattern);
+void state_move(List* list, int from, int to);
 
 #endif

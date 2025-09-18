@@ -14,14 +14,13 @@ static void add_channel(int type, void* data) {
 
 static void channel_menu(int item, void* channel) {
     switch (item) {
-        case 0:
+        case 0: // delete
             state_delete_channel(channel);
             break;
     }
 }
 
 void window_patterns(float w, float h) {
-    NESynthIter* iter;
     int patterns = nesynth_song_get_length(state_song());
     int channels = nesynth_num_channels(state_song());
     float channel_height = round(channels == 0 ? 0 : fmax((h - 16) / channels, 32));
@@ -53,18 +52,22 @@ void window_patterns(float w, float h) {
     ui_next();
     ui_subwindow(128, h - 16);
         ui_setup_offset(false, true);
-        iter = nesynth_iter_channels(state_song());
         curr_pos = 0;
-        while (nesynth_iter_next(iter)) {
-            NESynthChannel* channel = nesynth_iter_get(iter);
+        List* channel_list = state_list_channels();
+        for (int i = 0; i < channel_list->num_items; i++) {
+            NESynthChannel* channel = channel_list->items[i].item;
             ui_item(128, fmodf(curr_pos + channel_height, 1) < 0.5 ? floorf(channel_height) : ceilf(channel_height));
                 ui_dragndrop(ui_idptr(channel));
                 if (ui_is_dragndropped()) {
-
+                    List* channels = state_list_channels();
+                    int to = (ui_mouse_y(UI_ParentRelative) + ui_scroll_y()) / channel_height;
+                    if (to < 0) to = 0;
+                    if (to >= channel_list->num_items) to = channel_list->num_items - 1;
+                    state_move(state_list_channels(), i, to);
                 }
                 int color = ui_hovered(false, true) && !ui_is_dragndropped() ? 64 : 32;
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
-                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "%s", channel_names[nesynth_get_channel_type(nesynth_iter_get(iter))]);
+                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "%s", channel_names[nesynth_get_channel_type(channel)]);
                 if (ui_clicked()) state_select_channel(channel);
                 if (ui_right_clicked()) ui_menu("Delete\0Toggle Mute\0Toggle Solo\0Force Display in Piano Roll\0", channel_menu, channel);
             ui_end();
@@ -72,12 +75,12 @@ void window_patterns(float w, float h) {
             curr_pos += channel_height;
         }
     ui_end();
+    ui_limit_scroll(0, 0, ui_zoom() * 160 * patterns + 128, (int)(channel_height * channels + 16) - 1);
     ui_subwindow(w - 128, h - 16);
         ui_setup_offset(true, true);
-        iter = nesynth_iter_channels(state_song());
         curr_pos = 0;
-        while (nesynth_iter_next(iter)) {
-            NESynthChannel* channel = nesynth_iter_get(iter);
+        for (int i = 0; i < channel_list->num_items; i++) {
+            NESynthChannel* channel = channel_list->items[i].item;
             for (int i = 0; i < patterns; i++) {
                 int color = i % 2 ? 32 : 48;
                 ui_item(ui_zoom() * 160, fmodf(curr_pos + channel_height, 1) < 0.5 ? floorf(channel_height) : ceilf(channel_height));
