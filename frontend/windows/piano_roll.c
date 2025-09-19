@@ -197,6 +197,25 @@ static NoteProperties* get_notes(float pattern_width, float width, int* num_note
     return notes;
 }
 
+static void draw_slide(float x, float from_y, float to_y, float width, float cut, int color) {
+    int secondary = (color & 0xFFFFFF00) | ((color & 0xFF) / 2);
+    float cut_y = (to_y - from_y) * cut + from_y;
+    float cut_w = width * cut;
+    ui_draw_triangle(x, from_y, x + cut_w, from_y, x + cut_w, cut_y, color);
+    if (cut != 1) {
+        if (cut != 0) {
+            float y = from_y;
+            float h = cut_y - from_y;
+            if (h < 0) {
+                y += h;
+                h *= -1;
+            }
+            ui_draw_rectangle(x + cut_w, y, width - cut_w, h, secondary);
+        }
+        ui_draw_triangle(x + cut_w, cut_y, x + width, cut_y, x + width, to_y, secondary);
+    }
+}
+
 static void draw_note(float width, float start, float end, float base, float slide, float cut, int color, int bg_color, NoteType type) {
     float x = start * width / 4;
     float y = (NESYNTH_NOTE(C, 9) - 1 - base) * 12;
@@ -205,13 +224,14 @@ static void draw_note(float width, float start, float end, float base, float sli
     float slide_y = (NESYNTH_NOTE(C, 9) - 1 - slide) * 12;
     int faded = (color & 0xFFFFFF00) | 0x3F;
     int secondary = GRAYA(16, 0.75);
-    if (slide < base) ui_draw_triangle(x, y + 12, x + w, y + 12, x + w, slide_y + 12, faded);
-    if (slide > base) ui_draw_triangle(x, y, x + w, y, x + w, slide_y, faded);
+    if (slide < base) draw_slide(x, y + 12, slide_y + 12, w, cut, faded);
+    if (slide > base) draw_slide(x, y, slide_y, w, cut, faded);
     ui_draw_rectangle(x + 0, y - 1, w + 1, 13, bg_color);
     ui_draw_rectangle(x + 1, y + 0, cutoff, 11, color);
     ui_draw_rectangle(x + 1 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, faded);
     int octave = (base - NESYNTH_NOTE(C, 0)) / 12;
     int tone = roundf((base - NESYNTH_NOTE(C, 0)) - octave * 12);
+    if (w > 30) ui_text(x + 8, y + 2, secondary, "%s%d", tones[tone], octave);
     if (w > 8) switch (type) {
         case Note_NoAttack:
             ui_draw_rectangle(x + 2, y + 1, 4, 1, secondary);
@@ -229,7 +249,6 @@ static void draw_note(float width, float start, float end, float base, float sli
             ui_draw_triangle(x + 2, y + 1 + 8, x + 2 + 3, y + 1 + 8, x + 2 + 3, y + 1, secondary);
             break;
     }
-    if (w > 30) ui_text(x + 8, y + 2, secondary, "%s%d", tones[tone], octave);
 }
 
 void window_piano_roll(float w, float h) {
@@ -327,17 +346,16 @@ void window_piano_roll(float w, float h) {
                 int color = state_instrument_item(*nesynth_note_instrument(notes[i].note))->color;
                 int base = *nesynth_base_note(notes[i].note);
                 int slide = *nesynth_slide_note(notes[i].note);
-                draw_note(width,
-                    notes[i].start, notes[i].end, base, slide, notes[i].cutoff,
-                    color, notes[i].note == hover ? GRAY(224) : GRAY(16), *nesynth_attack_note(notes[i].note)
-                );
+                int pos = ui_mouse_x(UI_ItemRelative);
                 float start = notes[i].start;
                 float end = ((notes[i].end - notes[i].start) * notes[i].cutoff + notes[i].start);
-                int pos = ui_mouse_x(UI_ItemRelative);
-                if (
-                    (editing_slide == notes[i].note) ||
-                    (!editing_slide && pos >= start * width / 4 && pos < end * width / 4 && base != slide)
-                ) {
+                bool display_slide = editing_slide == notes[i].note || (!editing_slide && pos >= start * width / 4 && pos < end * width / 4 && base != slide);
+                draw_note(width,
+                    notes[i].start, notes[i].end, base, slide, notes[i].cutoff,
+                    color, notes[i].note == hover ? GRAY(224) : GRAY(16),
+                    *nesynth_attack_note(notes[i].note)
+                );
+                if (display_slide) {
                     int pitch = NESYNTH_NOTE(C, 9) - ui_mouse_y(UI_ItemRelative) / 12;
                     draw_note(
                         width, start, end, slide, slide, 1, color, pitch == slide ? GRAY(224) : GRAY(16),
