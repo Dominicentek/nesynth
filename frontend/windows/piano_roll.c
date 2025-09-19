@@ -216,7 +216,7 @@ static void draw_slide(float x, float from_y, float to_y, float width, float cut
     }
 }
 
-static void draw_note(float width, float start, float end, float base, float slide, float cut, int color, int bg_color, NoteType type) {
+static void draw_note(float width, float start, float end, float base, float slide, float cut, int color, int bg_color, NoteType type, float override_note_text) {
     float x = start * width / 4;
     float y = (NESYNTH_NOTE(C, 9) - 1 - base) * 12;
     float w = (end - start) * width / 4;
@@ -229,8 +229,9 @@ static void draw_note(float width, float start, float end, float base, float sli
     ui_draw_rectangle(x + 0, y - 1, w + 1, 13, bg_color);
     ui_draw_rectangle(x + 1, y + 0, cutoff, 11, color);
     ui_draw_rectangle(x + 1 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, faded);
-    int octave = (base - NESYNTH_NOTE(C, 0)) / 12;
-    int tone = roundf((base - NESYNTH_NOTE(C, 0)) - octave * 12);
+    int display_note = roundf(isnan(override_note_text) ? base : override_note_text);
+    int octave = (display_note - NESYNTH_NOTE(C, 0)) / 12;
+    int tone = roundf((display_note - NESYNTH_NOTE(C, 0)) - octave * 12);
     if (w > 30) ui_text(x + 8, y + 2, secondary, "%s%d", tones[tone], octave);
     if (w > 8) switch (type) {
         case Note_NoAttack:
@@ -353,13 +354,14 @@ void window_piano_roll(float w, float h) {
                 draw_note(width,
                     notes[i].start, notes[i].end, base, slide, notes[i].cutoff,
                     color, notes[i].note == hover ? GRAY(224) : GRAY(16),
-                    *nesynth_attack_note(notes[i].note)
+                    *nesynth_attack_note(notes[i].note), NAN
                 );
                 if (display_slide) {
                     int pitch = NESYNTH_NOTE(C, 9) - ui_mouse_y(UI_ItemRelative) / 12;
                     draw_note(
                         width, start, end, slide, slide, 1, color, pitch == slide ? GRAY(224) : GRAY(16),
-                        slide < base ? Note_SlideDown : slide > base ? Note_SlideUp : *nesynth_attack_note(notes[i].note)
+                        slide < base ? Note_SlideDown : slide > base ? Note_SlideUp : *nesynth_attack_note(notes[i].note),
+                        (slide - base) * notes[i].cutoff + base
                     );
                 }
                 if (ui_right_clicked() && notes[i].note == hover) ui_menu("Delete\0Toggle Attack\0Toggle Slide\0Make Instrument Current\0Replace with Current Instrument\0Snap", note_menu, hover);
