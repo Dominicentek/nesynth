@@ -2,6 +2,7 @@
 #include "state.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 
 typedef struct {
     NESynthNote* note;
@@ -10,9 +11,17 @@ typedef struct {
     float cutoff;
 } NoteProperties;
 
+typedef enum {
+    Note_NoAttack,
+    Note_Attack,
+    Note_SlideUp,
+    Note_SlideDown,
+} NoteType;
+
 static const char* tones[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 static int magnet = 4;
 static bool magnet_enabled = true;
+static NESynthNote* editing_slide;
 
 #define EDGE_TOLERANCE 8
 
@@ -76,45 +85,52 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
     float pos = ui_mouse_x(UI_ItemRelative) / width * 4;
     float csnap_pos = magnet_enabled ?  ceilf(pos * magnet) / magnet : pos;
     float fsnap_pos = magnet_enabled ? floorf(pos * magnet) / magnet : pos;
-    if (ui_mouse_down() && curr_note) {
-        NESynthNote* note = curr_note->note;
-        float prev_base = *nesynth_base_note(note);
-        float prev_start = nesynth_get_note_start(note);
-        float frel_pos = fsnap_pos - curr_note->pattern_pos * 4;
-        float crel_pos = csnap_pos - curr_note->pattern_pos * 4;
-        switch (curr_drag_action) {
-            case Drag_Move: {
-                float new_start = nesynth_get_note_start(note) + frel_pos - drag_offset;
-                if (new_start < 0) new_start = 0;
-                else if (new_start + *nesynth_note_length(note) > 4) new_start = 4 - *nesynth_note_length(note);
-                else drag_offset = frel_pos;
-                *nesynth_base_note(note) = pitch;
-                *nesynth_slide_note(note) += *nesynth_base_note(note) - prev_base;
-                nesynth_set_note_start(note, new_start);
-            } break;
-            case Drag_ResizeStart: {
-                float new_start = frel_pos < 0 ? 0 : frel_pos;
-                float new_length = *nesynth_note_length(note) - new_start + prev_start;
-                if (new_length > 0) {
+    if (ui_mouse_down()) {
+        if (curr_note) {
+            NESynthNote* note = curr_note->note;
+            float prev_base = *nesynth_base_note(note);
+            float prev_start = nesynth_get_note_start(note);
+            float frel_pos = fsnap_pos - curr_note->pattern_pos * 4;
+            float crel_pos = csnap_pos - curr_note->pattern_pos * 4;
+            switch (curr_drag_action) {
+                case Drag_Move: {
+                    float new_start = nesynth_get_note_start(note) + frel_pos - drag_offset;
+                    if (new_start < 0) new_start = 0;
+                    else if (new_start + *nesynth_note_length(note) > 4) new_start = 4 - *nesynth_note_length(note);
+                    else drag_offset = frel_pos;
+                    *nesynth_base_note(note) = pitch;
+                    *nesynth_slide_note(note) += *nesynth_base_note(note) - prev_base;
                     nesynth_set_note_start(note, new_start);
+                } break;
+                case Drag_ResizeStart: {
+                    float new_start = frel_pos < 0 ? 0 : frel_pos;
+                    float new_length = *nesynth_note_length(note) - new_start + prev_start;
+                    if (new_length > 0) {
+                        nesynth_set_note_start(note, new_start);
+                        *nesynth_note_length(note) = new_length;
+                    }
+                } break;
+                case Drag_ResizeEnd: {
+                    float new_length = crel_pos - nesynth_get_note_start(note);
+                    if (new_length <= 0) new_length = *nesynth_note_length(note);
+                    if (crel_pos > 4) new_length = 4 - nesynth_get_note_start(note);
                     *nesynth_note_length(note) = new_length;
-                }
-            } break;
-            case Drag_ResizeEnd: {
-                float new_length = crel_pos - nesynth_get_note_start(note);
-                if (new_length <= 0) new_length = *nesynth_note_length(note);
-                if (crel_pos > 4) new_length = 4 - nesynth_get_note_start(note);
-                *nesynth_note_length(note) = new_length;
-            } break;
+                } break;
+            }
+            return note;
         }
-        return note;
+        if (editing_slide) {
+            *nesynth_slide_note(editing_slide) = pitch;
+            return NULL;
+        }
     }
     if (curr_note) free(curr_note);
     curr_note = NULL;
     NoteProperties* hover = NULL;
     for (int i = 0; i < num_notes; i++) {
-        if (pos >= notes[i].start && pos < notes[i].end && pitch == *nesynth_base_note(notes[i].note)) {
-            hover = &notes[i];
+        if (pos >= notes[i].start && pos < notes[i].end) {
+            if (pitch == (int)*nesynth_base_note(notes[i].note)) hover = &notes[i];
+            if (pitch == (int)*nesynth_slide_note(notes[i].note)) editing_slide = notes[i].note;
         }
     }
     if (ui_clicked()) {
@@ -128,6 +144,7 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
             else curr_drag_action = Drag_Move;
             nesynth_set_note_start(hover->note, nesynth_get_note_start(hover->note));
         }
+        else if (editing_slide) return NULL;
         else {
             drag_offset = fsnap_pos;
             curr_drag_action = Drag_ResizeEnd;
@@ -142,6 +159,7 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
             };
         }
     }
+    editing_slide = NULL;
     return hover ? hover->note : NULL;
 }
 
@@ -177,6 +195,41 @@ static NoteProperties* get_notes(float pattern_width, float width, int* num_note
         }
     }
     return notes;
+}
+
+static void draw_note(float width, float start, float end, float base, float slide, float cut, int color, int bg_color, NoteType type) {
+    float x = start * width / 4;
+    float y = (NESYNTH_NOTE(C, 9) - 1 - base) * 12;
+    float w = (end - start) * width / 4;
+    float cutoff = cut * (w - 1);
+    float slide_y = (NESYNTH_NOTE(C, 9) - 1 - slide) * 12;
+    int faded = (color & 0xFFFFFF00) | 0x3F;
+    int secondary = GRAYA(16, 0.75);
+    if (slide < base) ui_draw_triangle(x, y + 12, x + w, y + 12, x + w, slide_y + 12, faded);
+    if (slide > base) ui_draw_triangle(x, y, x + w, y, x + w, slide_y, faded);
+    ui_draw_rectangle(x + 0, y - 1, w + 1, 13, bg_color);
+    ui_draw_rectangle(x + 1, y + 0, cutoff, 11, color);
+    ui_draw_rectangle(x + 1 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, faded);
+    int octave = (base - NESYNTH_NOTE(C, 0)) / 12;
+    int tone = roundf((base - NESYNTH_NOTE(C, 0)) - octave * 12);
+    if (w > 8) switch (type) {
+        case Note_NoAttack:
+            ui_draw_rectangle(x + 2, y + 1, 4, 1, secondary);
+            ui_draw_rectangle(x + 2, y + 1, 1, 9, secondary);
+            ui_draw_rectangle(x + 2, y + 1 + 8, 4, 1, secondary);
+            ui_draw_rectangle(x + 2 + 3, y + 1, 1, 9, secondary);
+            break;
+        case Note_Attack:
+            ui_draw_rectangle(x + 2, y + 1, 4, 9, secondary);
+            break;
+        case Note_SlideDown:
+            ui_draw_triangle(x + 2, y + 1, x + 2 + 3, y + 1, x + 2 + 3, y + 1 + 8, secondary);
+            break;
+        case Note_SlideUp:
+            ui_draw_triangle(x + 2, y + 1 + 8, x + 2 + 3, y + 1 + 8, x + 2 + 3, y + 1, secondary);
+            break;
+    }
+    if (w > 30) ui_text(x + 8, y + 2, secondary, "%s%d", tones[tone], octave);
 }
 
 void window_piano_roll(float w, float h) {
@@ -271,33 +324,26 @@ void window_piano_roll(float w, float h) {
                 }
             }
             for (int i = 0; i < num_notes; i++) {
-                float base = *nesynth_base_note(notes[i].note);
-                float slide = *nesynth_slide_note(notes[i].note);
-                float x = notes[i].start * width / 4;
-                float y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_base_note(notes[i].note)) * 12;
-                float w = (notes[i].end - notes[i].start) * width / 4;
-                float cutoff = notes[i].cutoff * (w - 1);
-                float slide_y = (NESYNTH_NOTE(C, 9) - 1 - *nesynth_slide_note(notes[i].note)) * 12;
                 int color = state_instrument_item(*nesynth_note_instrument(notes[i].note))->color;
-                int faded = (color & 0xFFFFFF00) | 0x3F;
-                int secondary = GRAYA(16, 0.75);
-                if (slide < base) ui_draw_triangle(x, y + 12, x + w, y + 12, x + w, slide_y + 12, faded);
-                if (slide > base) ui_draw_triangle(x, y, x + w, y, x + w, slide_y, faded);
-                ui_draw_rectangle(x + 0, y - 1, w + 1, 13, notes[i].note == hover ? GRAY(224) : GRAY(16));
-                ui_draw_rectangle(x + 1, y + 0, cutoff, 11, color);
-                ui_draw_rectangle(x + 1 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, faded);
-                int octave = (base - NESYNTH_NOTE(C, 0)) / 12;
-                int tone = roundf((base - NESYNTH_NOTE(C, 0)) - octave * 12);
-                if (w > 8) {
-                    if (*nesynth_attack_note(notes[i].note)) ui_draw_rectangle(x + 2, y + 1, 4, 9, secondary);
-                    else {
-                        ui_draw_rectangle(x + 2, y + 1, 4, 1, secondary);
-                        ui_draw_rectangle(x + 2, y + 1, 1, 9, secondary);
-                        ui_draw_rectangle(x + 2, y + 1 + 8, 4, 1, secondary);
-                        ui_draw_rectangle(x + 2 + 3, y + 1, 1, 9, secondary);
-                    }
+                int base = *nesynth_base_note(notes[i].note);
+                int slide = *nesynth_slide_note(notes[i].note);
+                draw_note(width,
+                    notes[i].start, notes[i].end, base, slide, notes[i].cutoff,
+                    color, notes[i].note == hover ? GRAY(224) : GRAY(16), *nesynth_attack_note(notes[i].note)
+                );
+                float start = notes[i].start;
+                float end = ((notes[i].end - notes[i].start) * notes[i].cutoff + notes[i].start);
+                int pos = ui_mouse_x(UI_ItemRelative);
+                if (
+                    (editing_slide == notes[i].note) ||
+                    (!editing_slide && pos >= start * width / 4 && pos < end * width / 4 && base != slide)
+                ) {
+                    int pitch = NESYNTH_NOTE(C, 9) - ui_mouse_y(UI_ItemRelative) / 12;
+                    draw_note(
+                        width, start, end, slide, slide, 1, color, pitch == slide ? GRAY(224) : GRAY(16),
+                        slide < base ? Note_SlideDown : slide > base ? Note_SlideUp : *nesynth_attack_note(notes[i].note)
+                    );
                 }
-                if (w > 30) ui_text(x + 8, y + 2, secondary, "%s%d", tones[tone], octave);
                 if (ui_right_clicked() && notes[i].note == hover) ui_menu("Delete\0Toggle Attack\0Toggle Slide\0Make Instrument Current\0Replace with Current Instrument\0Snap", note_menu, hover);
             }
             free(notes);
