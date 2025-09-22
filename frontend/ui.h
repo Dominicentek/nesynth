@@ -51,6 +51,7 @@ void ui_dummy(float w, float h);
 void ui_flow(UIFlow flow);
 void ui_end();
 void ui_next();
+void ui_default_scroll(float x, float y);
 void ui_limit_scroll(float min_x, float min_y, float max_x, float max_y);
 void ui_setup_offset(bool scroll_x, bool scroll_y);
 void ui_update_zoom(float offset_x);

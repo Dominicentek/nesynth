@@ -259,6 +259,7 @@ static void draw_note(float width, float start, float end, float base, float sli
 
 void window_piano_roll(float w, float h) {
     int patterns = nesynth_song_get_length(state_song());
+    ui_default_scroll(0, (NESYNTH_NOTE(C, 9) - NESYNTH_NOTE(C, 4)) * 12 + 9 - h / 2);
     ui_middleclick();
     ui_update_zoom(128);
     ui_limit_scroll(0, 0, patterns * ui_zoom() * 160 + 128, 12*12*9 + 32);

@@ -375,8 +375,8 @@ static UIWindowInfo* ui_find_window_info(UIWindow window) {
     curr = window_info_head;
     curr->next = calloc(sizeof(UIEvent), 1);
     curr->window = window;
-    curr->scroll_x = 0;
-    curr->scroll_y = 0;
+    curr->scroll_x = NAN;
+    curr->scroll_y = NAN;
     curr->zoom = 1;
     window_info_head = curr->next;
     return curr;
@@ -536,8 +536,15 @@ void ui_end() {
     draw_priority = 0;
 }
 
+void ui_default_scroll(float x, float y) {
+    if (curr_node->type != UINodeType_Window) return;
+    if (isnan(curr_node->info->scroll_x)) curr_node->info->scroll_x = x;
+    if (isnan(curr_node->info->scroll_y)) curr_node->info->scroll_y = y;
+}
+
 void ui_limit_scroll(float min_x, float min_y, float max_x, float max_y) {
     if (curr_node->type != UINodeType_Window) return;
+    ui_default_scroll(0, 0);
     float prev_x = curr_node->info->scroll_x;
     float prev_y = curr_node->info->scroll_y;
     max_x -= curr_node->w;
@@ -552,6 +559,7 @@ void ui_limit_scroll(float min_x, float min_y, float max_x, float max_y) {
 
 void ui_setup_offset(bool h, bool v) {
     if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow) return;
+    ui_default_scroll(0, 0);
     curr_node->cursor_offset_x = -curr_node->info->scroll_x * h;
     curr_node->cursor_offset_y = -curr_node->info->scroll_y * v;
 }
@@ -559,6 +567,7 @@ void ui_setup_offset(bool h, bool v) {
 void ui_update_zoom(float offset_x) {
     if (curr_menu) return;
     if (curr_node->type != UINodeType_Window) return;
+    ui_default_scroll(0, 0);
     UIEvent* curr = events;
     float min = powf(2, -4);
     float max = powf(2,  4);
