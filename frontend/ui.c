@@ -629,14 +629,14 @@ float ui_zoom() {
     return curr_node->info->zoom;
 }
 
-float ui_scroll_x() {
-    if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow && curr_node->type != UINodeType_Item) return 0;
-    return curr_node->info->scroll_x;
+float* ui_scroll_x() {
+    if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow && curr_node->type != UINodeType_Item) return NULL;
+    return &curr_node->info->scroll_x;
 }
 
-float ui_scroll_y() {
-    if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow && curr_node->type != UINodeType_Item) return 0;
-    return curr_node->info->scroll_y;
+float* ui_scroll_y() {
+    if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow && curr_node->type != UINodeType_Item) return NULL;
+    return &curr_node->info->scroll_y;
 }
 
 float ui_mouse_x(UIRelativity relativity) {

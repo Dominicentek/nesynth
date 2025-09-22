@@ -72,7 +72,7 @@ static void note_menu(int index, void* data) {
     }
 }
 
-static NESynthNote* update_notes(float width, NoteProperties* notes, int num_notes, NESynthNoteType type) {
+static NESynthNote* update_notes(float win_w, float win_h, float width, NoteProperties* notes, int num_notes, NESynthNoteType type) {
     static NoteProperties* curr_note = NULL;
     static float drag_offset;
     static enum {
@@ -86,6 +86,9 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
     float csnap_pos = magnet_enabled ?  ceilf(pos * magnet) / magnet : pos;
     float fsnap_pos = magnet_enabled ? floorf(pos * magnet) / magnet : pos;
     if (ui_mouse_down()) {
+        float mouse_y = ui_mouse_y(UI_ItemRelative) - *ui_scroll_y();
+        if (mouse_y < 64) *ui_scroll_y() -= 4;
+        if (mouse_y >= win_h - 64) *ui_scroll_y() += 4 ;
         if (curr_note) {
             NESynthNote* note = curr_note->note;
             float prev_base = *nesynth_base_note(note);
@@ -120,6 +123,8 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
             return note;
         }
         if (editing_slide) {
+            if (pitch < NESYNTH_NOTE(C, 0)) pitch = NESYNTH_NOTE(C, 0);
+            if (pitch > NESYNTH_NOTE(B, 8)) pitch = NESYNTH_NOTE(B, 8);
             *nesynth_slide_note(editing_slide) = pitch;
             return NULL;
         }
@@ -164,8 +169,8 @@ static NESynthNote* update_notes(float width, NoteProperties* notes, int num_not
 }
 
 static NoteProperties* get_notes(float pattern_width, float width, int* num_notes, NESynthNoteType note_type) {
-    float start = ui_scroll_x() / pattern_width * 4;
-    float end = (ui_scroll_x() + width) / pattern_width * 4;
+    float start = *ui_scroll_x() / pattern_width * 4;
+    float end = (*ui_scroll_x() + width) / pattern_width * 4;
     NoteProperties* notes = NULL;
     *num_notes = 0;
     for (int i = 0; i < nesynth_song_get_length(state_song()); i++) {
@@ -325,14 +330,14 @@ void window_piano_roll(float w, float h) {
         ui_item(width * patterns, 12*12*9);
             int num_notes = 0;
             NoteProperties* notes = get_notes(width, w - 128, &num_notes, NESynthNoteType_Instrument);
-            NESynthNote* hover = update_notes(width, notes, num_notes, NESynthNoteType_Instrument);
+            NESynthNote* hover = update_notes(w, h, width, notes, num_notes, NESynthNoteType_Instrument);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(48));
             for (int i = 0; i < 12 * 9; i++) {
                 int tone = i % 12;
                 if (tone % 2 == (tone < 7)) ui_draw_rectangle(AUTO, i * 12, AUTO, 12, GRAY(32));
                 ui_draw_line(AUTO, i * 12 + 11, AUTO, AUTO, GRAY(16));
             }
-            for (int i = ui_scroll_x() / width; i < (ui_scroll_x() + w - 128) / width; i++) {
+            for (int i = *ui_scroll_x() / width; i < (*ui_scroll_x() + w - 128) / width; i++) {
                 if (i >= patterns) break;
                 ui_draw_rectangle(i * width - 2, AUTO, 3, AUTO, GRAY(16));
                 if (ui_zoom() >= 0.25) {

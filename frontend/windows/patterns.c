@@ -60,7 +60,7 @@ void window_patterns(float w, float h) {
                 ui_dragndrop(ui_idptr(channel));
                 if (ui_is_dragndropped()) {
                     List* channels = state_list_channels();
-                    int to = (ui_mouse_y(UI_ParentRelative) + ui_scroll_y()) / channel_height;
+                    int to = (ui_mouse_y(UI_ParentRelative) + *ui_scroll_y()) / channel_height;
                     if (to < 0) to = 0;
                     if (to >= channel_list->num_items) to = channel_list->num_items - 1;
                     state_move(state_list_channels(), i, to);

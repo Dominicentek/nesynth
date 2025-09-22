@@ -25,7 +25,7 @@ void window_list(float w, float h, const char* title, List* list, int* selected,
                 if (ui_right_clicked()) ui_menu(menu, menu_handler, list->items[i].item);
                 ui_dragndrop(ui_idptr(list->items[i].item));
                 if (ui_is_dragndropped()) {
-                    int new_i = (ui_mouse_y(UI_ParentRelative) + ui_scroll_y()) / 16;
+                    int new_i = (ui_mouse_y(UI_ParentRelative) + *ui_scroll_y()) / 16;
                     if (new_i < 0) new_i = 0;
                     if (new_i >= list->num_items) new_i = list->num_items - 1;
                     state_move(list, i, new_i);
