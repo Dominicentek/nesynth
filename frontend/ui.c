@@ -236,7 +236,7 @@ static void ui_render_text(float x, float y, int color, char* text) {
     }
 }
 
-static int ui_interpolate_color(int from, int to, float x) {
+int ui_interpolate_color(int from, int to, float x) {
     float fr = ((from >> 24) & 0xFF) / 255.f;
     float fg = ((from >> 16) & 0xFF) / 255.f;
     float fb = ((from >>  8) & 0xFF) / 255.f;

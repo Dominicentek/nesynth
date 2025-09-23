@@ -25,6 +25,48 @@ static NESynthNote* editing_slide;
 
 #define EDGE_TOLERANCE 8
 
+static char* format(const char* fmt, ...) {
+    va_list arg1, arg2;
+    va_start(arg1, fmt);
+    va_copy(arg2, arg1);
+    char* str = malloc(vsnprintf(NULL, 0, fmt, arg2) + 1);
+    va_end(arg2);
+    vsprintf(str, fmt, arg1);
+    va_end(arg1);
+    return str;
+}
+
+static char* get_instrument_text(float x) {
+    int octave = (x - NESYNTH_NOTE(C, 0)) / 12;
+    int tone = roundf((x - NESYNTH_NOTE(C, 0)) - octave * 12);
+    return format("%s%d", tones[tone], octave);
+}
+
+static char* get_volume_text(float x) {
+    int val = x - NESYNTH_NOTE(C, 2);
+    if (val < 0 || val > 64) return NULL;
+    return format("%d", val);
+}
+
+static char* get_pitch_text(float x) {
+    int val = x - NESYNTH_NOTE(FS, 4);
+    if (val < -48 || val > 48) return NULL;
+    if      (val < 0) return format("-%d", abs(val));
+    else if (val > 0) return format("+%d", abs(val));
+    else return format("0");
+}
+
+struct {
+    const char* name;
+    const char* image;
+    char*(*get_text)(float x);
+    int min, max;
+} note_type_table[] = {
+    { "Instrument", "images/instrument.png", get_instrument_text, NESYNTH_NOTE(C, 0),  NESYNTH_NOTE(B, 8)  },
+    { "Volume",     "images/volume.png",     get_volume_text,     NESYNTH_NOTE(C, 2),  NESYNTH_NOTE(E, 7)  },
+    { "Pitch",      "images/pitch.png",      get_pitch_text,      NESYNTH_NOTE(FS, 0), NESYNTH_NOTE(FS, 8) },
+};
+
 static void draw_line(int count, int color, float offset, float width) {
     for (int i = 1; i < count; i++) {
         ui_draw_line(width * i / count + offset, AUTO, AUTO, AUTO, color);
@@ -44,14 +86,19 @@ static void set_magnet(int index, void* data) {
     }
 }
 
+static void set_mode(int index, void* data) {
+    state.note_type = index;
+}
+
 static void note_menu(int index, void* data) {
     NESynthNote* note = data;
     switch (index) {
         case 0: // delete
             nesynth_delete_note(note);
             break;
-        case 1: // toggle attack
-            *nesynth_attack_note(note) ^= 1;
+        case 1: // snap
+            nesynth_set_note_start(note, floorf(nesynth_get_note_start(note) * magnet) / magnet);
+            *nesynth_note_length(note) = ceilf(*nesynth_note_length(note) * magnet) / magnet;
             break;
         case 2: // toggle slide
             *nesynth_slide_note(note) =
@@ -59,15 +106,14 @@ static void note_menu(int index, void* data) {
                 ? *nesynth_base_note(note) + 4
                 : *nesynth_base_note(note);
             break;
-        case 3: // make instrument current
+        case 3: // toggle attack
+            *nesynth_attack_note(note) ^= 1;
+            break;
+        case 4: // make instrument current
             state_select_instrument(*nesynth_note_instrument(note));
             break;
-        case 4: // replace with current instrument
+        case 5: // replace with current instrument
             *nesynth_note_instrument(note) = state_instrument();
-            break;
-        case 5: // snap
-            nesynth_set_note_start(note, floorf(nesynth_get_note_start(note) * magnet) / magnet);
-            *nesynth_note_length(note) = ceilf(*nesynth_note_length(note) * magnet) / magnet;
             break;
     }
 }
@@ -85,11 +131,19 @@ static NESynthNote* update_notes(float win_w, float win_h, float width, NoteProp
     float pos = ui_mouse_x(UI_ItemRelative) / width * 4;
     float csnap_pos = magnet_enabled ?  ceilf(pos * magnet) / magnet : pos;
     float fsnap_pos = magnet_enabled ? floorf(pos * magnet) / magnet : pos;
+    if (pitch < note_type_table[type].min) pitch = note_type_table[type].min;
+    if (pitch > note_type_table[type].max) pitch = note_type_table[type].max;
     if (ui_mouse_down()) {
-        float mouse_y = ui_mouse_y(UI_ItemRelative) - *ui_scroll_y();
-        if (mouse_y < 64) *ui_scroll_y() -= 4;
-        if (mouse_y >= win_h - 64) *ui_scroll_y() += 4 ;
+        if (curr_note || editing_slide) {
+            float mouse_y = ui_mouse_y(UI_ItemRelative) - *ui_scroll_y();
+            if (mouse_y < 64) *ui_scroll_y() -= 4;
+            if (mouse_y >= win_h - 64) *ui_scroll_y() += 4;
+        }
         if (curr_note) {
+            float mouse_x = ui_mouse_x(UI_ItemRelative) - *ui_scroll_x();
+            if (mouse_x < 64) *ui_scroll_x() -= 4;
+            if (mouse_x >= win_w - 64) *ui_scroll_x() += 4;
+
             NESynthNote* note = curr_note->note;
             float prev_base = *nesynth_base_note(note);
             float prev_start = nesynth_get_note_start(note);
@@ -101,8 +155,12 @@ static NESynthNote* update_notes(float win_w, float win_h, float width, NoteProp
                     if (new_start < 0) new_start = 0;
                     else if (new_start + *nesynth_note_length(note) > 4) new_start = 4 - *nesynth_note_length(note);
                     else drag_offset = frel_pos;
-                    *nesynth_base_note(note) = pitch;
-                    *nesynth_slide_note(note) += *nesynth_base_note(note) - prev_base;
+                    float* base = nesynth_base_note(note);
+                    float* slide = nesynth_slide_note(note);
+                    *base = pitch;
+                    *slide += *base - prev_base;
+                    if (*slide < note_type_table[type].min) *slide = note_type_table[type].min;
+                    if (*slide > note_type_table[type].max) *slide = note_type_table[type].max;
                     nesynth_set_note_start(note, new_start);
                 } break;
                 case Drag_ResizeStart: {
@@ -123,8 +181,6 @@ static NESynthNote* update_notes(float win_w, float win_h, float width, NoteProp
             return note;
         }
         if (editing_slide) {
-            if (pitch < NESYNTH_NOTE(C, 0)) pitch = NESYNTH_NOTE(C, 0);
-            if (pitch > NESYNTH_NOTE(B, 8)) pitch = NESYNTH_NOTE(B, 8);
             *nesynth_slide_note(editing_slide) = pitch;
             return NULL;
         }
@@ -221,7 +277,7 @@ static void draw_slide(float x, float from_y, float to_y, float width, float cut
     }
 }
 
-static void draw_note(float width, float start, float end, float base, float slide, float cut, int color, int bg_color, NoteType type, float override_note_text) {
+static void draw_note(float width, float start, float end, float base, float slide, float cut, int color, int bg_color, NoteType type, float override_note_text, char*(*get_text)(float x)) {
     float x = start * width / 4;
     float y = (NESYNTH_NOTE(C, 9) - 1 - base) * 12;
     float w = (end - start) * width / 4;
@@ -235,9 +291,11 @@ static void draw_note(float width, float start, float end, float base, float sli
     ui_draw_rectangle(x + 1, y + 0, cutoff, 11, color);
     ui_draw_rectangle(x + 1 + cutoff, y + 0, ceilf((w - 1) - cutoff), 11, faded);
     int display_note = roundf(isnan(override_note_text) ? base : override_note_text);
-    int octave = (display_note - NESYNTH_NOTE(C, 0)) / 12;
-    int tone = roundf((display_note - NESYNTH_NOTE(C, 0)) - octave * 12);
-    if (w > 30) ui_text(x + 8, y + 2, secondary, "%s%d", tones[tone], octave);
+    if (w > 30) {
+        char* text = get_text(display_note);
+        if (text) ui_text(x + 8, y + 2, secondary, "%s", text);
+        free(text);
+    }
     if (w > 8) switch (type) {
         case Note_NoAttack:
             ui_draw_rectangle(x + 2, y + 1, 4, 1, secondary);
@@ -257,6 +315,36 @@ static void draw_note(float width, float start, float end, float base, float sli
     }
 }
 
+static void draw_notes(float width, NoteProperties* notes, int num_notes, NESynthNote* selected, NESynthNoteType note_type, bool interactive, float value, char*(*get_text)(float x)) {
+    for (int i = 0; i < num_notes; i++) {
+        int color = ui_interpolate_color(GRAY(0), state.note_type == NESynthNoteType_Instrument ? state_instrument_item(*nesynth_note_instrument(notes[i].note))->color : GRAY(224), value);
+        int base = *nesynth_base_note(notes[i].note);
+        int slide = *nesynth_slide_note(notes[i].note);
+        int pos = ui_mouse_x(UI_ItemRelative);
+        float start = notes[i].start;
+        float end = ((notes[i].end - notes[i].start) * notes[i].cutoff + notes[i].start);
+        bool display_slide = interactive && (editing_slide == notes[i].note || (!editing_slide && pos >= start * width / 4 && pos < end * width / 4 && base != slide));
+        draw_note(width,
+            notes[i].start, notes[i].end, base, slide, notes[i].cutoff,
+            color, interactive && notes[i].note == selected ? GRAY(224) : GRAY(16),
+            *nesynth_attack_note(notes[i].note), NAN, get_text
+        );
+        if (display_slide) {
+            int pitch = NESYNTH_NOTE(C, 9) - ui_mouse_y(UI_ItemRelative) / 12;
+            draw_note(
+                width, start, end, slide, slide, 1, color, pitch == slide ? GRAY(224) : GRAY(16),
+                slide < base ? Note_SlideDown : slide > base ? Note_SlideUp : *nesynth_attack_note(notes[i].note),
+                (slide - base) * notes[i].cutoff + base, get_text
+            );
+        }
+        if (interactive && ui_right_clicked() && notes[i].note == selected) {
+            char menu[] = "Delete\0Snap\0Toggle Slide\0Toggle Attack\0Make Instrument Current\0Replace with Current Instrument\0";
+            if (note_type != NESynthNoteType_Instrument) menu[25] = 0; // Toggle Slide\0Toggle Attack
+            ui_menu(menu, note_menu, selected); //                                      ^
+        }
+    }
+}
+
 void window_piano_roll(float w, float h) {
     int patterns = nesynth_song_get_length(state_song());
     ui_default_scroll(0, (NESYNTH_NOTE(C, 9) - NESYNTH_NOTE(C, 4)) * 12 + 9 - h / 2);
@@ -268,7 +356,9 @@ void window_piano_roll(float w, float h) {
         ui_flow(UIFlow_LeftToRight);
         ui_item(112, 32);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
-            ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4, magnet_enabled ? GRAY(255) : GRAY(64), "1/%d", magnet);
+            ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*0, magnet_enabled ? GRAY(255) : GRAY(64), "1/%d", magnet);
+            ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*1, GRAY(255), note_type_table[state.note_type].name, magnet
+        );
         ui_end();
         ui_next();
         ui_item(16, 16);
@@ -279,7 +369,8 @@ void window_piano_roll(float w, float h) {
         ui_end();
         ui_item(16, 16);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
-            ui_text(4, 4, GRAY(255), "v");
+            ui_image(note_type_table[state.note_type].image, 0, 0, 16, 16);
+            if (ui_clicked() || ui_right_clicked()) ui_menu("Instrument\0Volume\0Pitch\0", set_mode, NULL);
         ui_end();
     ui_end();
     float width = ui_zoom() * 160;
@@ -317,11 +408,13 @@ void window_piano_roll(float w, float h) {
         for (int i = 8; i >= 0; i--) {
             for (int j = 0; j < 12; j++) {
                 ui_item(128, 12);
+                    char* text = note_type_table[state.note_type].get_text(NESYNTH_MIDI(11 - j, i));
                     int white = ui_hovered(false, true) ? 255 : 224;
                     int black = ui_hovered(false, true) ? 64 : 16;
                     ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(white));
-                    ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -2, 2, GRAY(black), "%s%d", tones[11 - j], i);
+                    if (text) ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -2, 2, GRAY(black), text);
                     if (j % 2 == (j < 7)) ui_draw_rectangle(0, AUTO, 64, AUTO, GRAY(16));
+                    free(text);
                 ui_end();
             }
         }
@@ -330,12 +423,20 @@ void window_piano_roll(float w, float h) {
         ui_setup_offset(true, true);
         ui_item(width * patterns, 12*12*9);
             int num_notes = 0;
-            NoteProperties* notes = get_notes(width, w - 128, &num_notes, NESynthNoteType_Instrument);
-            NESynthNote* hover = update_notes(w, h, width, notes, num_notes, NESynthNoteType_Instrument);
+            NoteProperties* notes = get_notes(width, w - 128, &num_notes, state.note_type);
+            NESynthNote* hover = update_notes(w - 128, h - 32, width, notes, num_notes, state.note_type);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(48));
             for (int i = 0; i < 12 * 9; i++) {
                 int tone = i % 12;
-                if (tone % 2 == (tone < 7)) ui_draw_rectangle(AUTO, i * 12, AUTO, 12, GRAY(32));
+                int note = (12*9 - 1 - i) + NESYNTH_NOTE(C, 0);
+                if (
+                    note < note_type_table[state.note_type].min || note > note_type_table[state.note_type].max ||
+                    tone % 2 == (tone < 7)
+                ) ui_draw_rectangle(AUTO, i * 12, AUTO, 12, GRAY(32));
+            }
+            for (int i = 0; i < 12 * 9; i++) {
+                int note = (12*9 - 1 - i) + NESYNTH_NOTE(C, 0);
+                if (note < note_type_table[state.note_type].min || note > note_type_table[state.note_type].max + 1) continue;
                 ui_draw_line(AUTO, i * 12 + 11, AUTO, AUTO, GRAY(16));
             }
             for (int i = *ui_scroll_x() / width; i < (*ui_scroll_x() + w - 128) / width; i++) {
@@ -349,29 +450,13 @@ void window_piano_roll(float w, float h) {
                     if (ui_zoom() >= 2) draw_line(num_lines * 4, GRAYA(16, 0.5), i * width, width);
                 }
             }
-            for (int i = 0; i < num_notes; i++) {
-                int color = state_instrument_item(*nesynth_note_instrument(notes[i].note))->color;
-                int base = *nesynth_base_note(notes[i].note);
-                int slide = *nesynth_slide_note(notes[i].note);
-                int pos = ui_mouse_x(UI_ItemRelative);
-                float start = notes[i].start;
-                float end = ((notes[i].end - notes[i].start) * notes[i].cutoff + notes[i].start);
-                bool display_slide = editing_slide == notes[i].note || (!editing_slide && pos >= start * width / 4 && pos < end * width / 4 && base != slide);
-                draw_note(width,
-                    notes[i].start, notes[i].end, base, slide, notes[i].cutoff,
-                    color, notes[i].note == hover ? GRAY(224) : GRAY(16),
-                    *nesynth_attack_note(notes[i].note), NAN
-                );
-                if (display_slide) {
-                    int pitch = NESYNTH_NOTE(C, 9) - ui_mouse_y(UI_ItemRelative) / 12;
-                    draw_note(
-                        width, start, end, slide, slide, 1, color, pitch == slide ? GRAY(224) : GRAY(16),
-                        slide < base ? Note_SlideDown : slide > base ? Note_SlideUp : *nesynth_attack_note(notes[i].note),
-                        (slide - base) * notes[i].cutoff + base
-                    );
-                }
-                if (ui_right_clicked() && notes[i].note == hover) ui_menu("Delete\0Toggle Attack\0Toggle Slide\0Make Instrument Current\0Replace with Current Instrument\0Snap", note_menu, hover);
+            if (state.note_type != NESynthNoteType_Instrument) {
+                int num_notes = 0;
+                NoteProperties* notes = get_notes(width, w - 128, &num_notes, NESynthNoteType_Instrument);
+                draw_notes(width, notes, num_notes, NULL, NESynthNoteType_Instrument, true, 0.5, get_instrument_text);
+                free(notes);
             }
+            draw_notes(width, notes, num_notes, hover, state.note_type, true, 1, note_type_table[state.note_type].get_text);
             free(notes);
         ui_end();
     ui_end();

@@ -36,6 +36,8 @@ typedef enum {
     UI_ItemRelative,
 } UIRelativity;
 
+int ui_interpolate_color(int from, int to, float interp);
+
 void ui_process_event(SDL_Event* event);
 void ui_clear_events();
 void ui_begin(SDL_Window* window, SDL_Renderer* renderer);
