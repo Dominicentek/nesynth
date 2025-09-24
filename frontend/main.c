@@ -26,9 +26,13 @@ int main() {
         ui_splith(0, 36);
             ui_window(window_menubar);
             ui_splitv(1, -300);
-                ui_splith(0.25, 0);
-                    ui_window(window_patterns);
-                    ui_window(window_piano_roll);
+                state.song == -1
+                ? ui_window(window_envelope_editor)
+                : ({
+                    ui_splith(0.25, 0);
+                        ui_window(window_patterns);
+                        ui_window(window_piano_roll);
+                });
                 ui_splith(0.5, 0);
                     ui_window(window_songs);
                     ui_window(window_instruments);

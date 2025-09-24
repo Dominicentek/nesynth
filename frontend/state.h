@@ -26,6 +26,7 @@ void state_delete_pattern(NESynthPattern* pattern);
 NESynthInstrument* state_instrument();
 NESynthSong* state_song();
 NESynthChannel* state_channel();
+NESynthNodeTable* state_nodetable();
 List* state_list_channels();
 List* state_list_patterns();
 void state_select_instrument(NESynthInstrument* instrument);

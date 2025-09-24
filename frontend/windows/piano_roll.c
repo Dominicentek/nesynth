@@ -323,12 +323,13 @@ static void draw_notes(float width, NoteProperties* notes, int num_notes, NESynt
         int pos = ui_mouse_x(UI_ItemRelative);
         float start = notes[i].start;
         float end = ((notes[i].end - notes[i].start) * notes[i].cutoff + notes[i].start);
-        bool display_slide = interactive && (editing_slide == notes[i].note || (!editing_slide && pos >= start * width / 4 && pos < end * width / 4 && base != slide));
+        bool display_slide = editing_slide == notes[i].note || (!editing_slide && pos >= start * width / 4 && pos < end * width / 4 && base != slide);
         draw_note(width,
             notes[i].start, notes[i].end, base, slide, notes[i].cutoff,
             color, interactive && notes[i].note == selected ? GRAY(224) : GRAY(16),
             *nesynth_attack_note(notes[i].note), NAN, get_text
         );
+        if (!interactive) continue;
         if (display_slide) {
             int pitch = NESYNTH_NOTE(C, 9) - ui_mouse_y(UI_ItemRelative) / 12;
             draw_note(
@@ -337,7 +338,7 @@ static void draw_notes(float width, NoteProperties* notes, int num_notes, NESynt
                 (slide - base) * notes[i].cutoff + base, get_text
             );
         }
-        if (interactive && ui_right_clicked() && notes[i].note == selected) {
+        if (ui_right_clicked() && notes[i].note == selected) {
             char menu[] = "Delete\0Snap\0Toggle Slide\0Toggle Attack\0Make Instrument Current\0Replace with Current Instrument\0";
             if (note_type != NESynthNoteType_Instrument) menu[25] = 0; // Toggle Slide\0Toggle Attack
             ui_menu(menu, note_menu, selected); //                                      ^
@@ -453,7 +454,7 @@ void window_piano_roll(float w, float h) {
             if (state.note_type != NESynthNoteType_Instrument) {
                 int num_notes = 0;
                 NoteProperties* notes = get_notes(width, w - 128, &num_notes, NESynthNoteType_Instrument);
-                draw_notes(width, notes, num_notes, NULL, NESynthNoteType_Instrument, true, 0.5, get_instrument_text);
+                draw_notes(width, notes, num_notes, NULL, NESynthNoteType_Instrument, false, 0.5, get_instrument_text);
                 free(notes);
             }
             draw_notes(width, notes, num_notes, hover, state.note_type, true, 1, note_type_table[state.note_type].get_text);

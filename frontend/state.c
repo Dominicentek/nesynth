@@ -21,7 +21,7 @@ static void arrmove(void* arr, size_t from, size_t to, size_t size) {
 }
 
 static int state_generate_color(List* list) {
-    float seed = list->color_seed / 8.f;
+    float seed = list->color_seed / 6.f;
     float hue = fmodf(seed + 0.5f, 1);
     float sat = -sinf((floorf(seed) / 6.f * M_PI * 2) + (M_PI / 2)) / 8 + 0.625f;
     list->color_seed++;
@@ -125,6 +125,14 @@ NESynthSong* state_song() {
 
 NESynthChannel* state_channel() {
     return songs.items[state.song].nested_list.items[state.channel].item;
+}
+
+NESynthNodeTable* state_nodetable() {
+    switch (state.note_type) {
+        case NESynthNoteType_Volume: return nesynth_instrument_volume(state_instrument());
+        case NESynthNoteType_Pitch:  return nesynth_instrument_pitch(state_instrument());
+        default: return NULL;
+    }
 }
 
 List* state_list_channels() {

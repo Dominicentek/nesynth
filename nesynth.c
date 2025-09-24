@@ -20,6 +20,7 @@ typedef struct {
 
 struct NESynthNodeTable {
     float loop_point;
+    NESynthTimescale timescale;
     NESynthLinkedList* nodes;
 };
 
@@ -382,6 +383,14 @@ bool* nesynth_instrument_loop_samples(NESynthInstrument* instrument) {
     return &instrument->loop_samples;
 }
 
+NESynthNodeTable* nesynth_instrument_volume(NESynthInstrument* instrument) {
+    return instrument->volume;
+}
+
+NESynthNodeTable* nesynth_instrument_pitch(NESynthInstrument* instrument) {
+    return instrument->pitch;
+}
+
 int nesynth_num_songs(NESynth* synth) {
     return linkedlist_length(synth->songs);
 }
@@ -610,6 +619,10 @@ float* nesynth_nodetable_slide(NESynthNodeTable* node_table, int index) {
     NESynthNode* node = linkedlist_index(node_table->nodes, index);
     if (node) return &node->slide;
     return NULL;
+}
+
+NESynthTimescale* nesynth_nodetable_timescale(NESynthNodeTable* node_table) {
+    return &node_table->timescale;
 }
 
 static void nesynth_destroy_instrument(NESynthInstrument* instrument) {

@@ -20,6 +20,15 @@ static void channel_menu(int item, void* channel) {
     }
 }
 
+static void set_points(int item, void* pattern_id) {
+    int id = (uintptr_t)pattern_id;
+    switch (item) {
+        case 0: // set loop point
+            *nesynth_song_loop_point(state_song()) = id;
+            break;
+    }
+}
+
 void window_patterns(float w, float h) {
     int patterns = nesynth_song_get_length(state_song());
     int channels = nesynth_num_channels(state_song());
@@ -46,6 +55,9 @@ void window_patterns(float w, float h) {
                 int color = ui_hovered(true, false) ? 64 : i % 2 ? 32 : 48;
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
                 ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, GRAY(255), "%d", i + 1);
+                if (*nesynth_song_loop_point(state_song()) == i) ui_text(4, 4, GRAY(255), "v");
+                if (ui_right_clicked()) ui_menu("Set Loop Point\0Toggle Transition Point\0", set_points, (void*)(uintptr_t)i);
+                if (ui_clicked()) *nesynth_song_loop_point(state_song()) = i;
             ui_end();
         }
     ui_end();
@@ -69,7 +81,7 @@ void window_patterns(float w, float h) {
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
                 ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "%s", channel_names[nesynth_get_channel_type(channel)]);
                 if (ui_clicked()) state_select_channel(channel);
-                if (ui_right_clicked()) ui_menu("Delete\0Toggle Mute\0Toggle Solo\0Force Display in Piano Roll\0", channel_menu, channel);
+                if (ui_right_clicked()) ui_menu("Delete\0Rename\0Toggle Mute\0Toggle Solo\0Force Display in Piano Roll\0", channel_menu, channel);
             ui_end();
             ui_next();
             curr_pos += channel_height;

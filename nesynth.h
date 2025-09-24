@@ -29,6 +29,11 @@ typedef enum {
     NESynthNoteType_Pitch,
 } NESynthNoteType;
 
+typedef enum {
+    NESynthTimescale_Seconds,
+    NESynthTimescale_Beats,
+} NESynthTimescale;
+
 #define NESYNTH_NO_LOOP NAN
 #define nesynth_is_looping isnan
 
@@ -117,6 +122,7 @@ void nesynth_nodetable_remove(NESynthNodeTable* node_table, int index);
 float* nesynth_nodetable_loop_point(NESynthNodeTable* node_table);
 float* nesynth_nodetable_value(NESynthNodeTable* node_table, int index);
 float* nesynth_nodetable_slide(NESynthNodeTable* node_table, int index);
+NESynthTimescale* nesynth_nodetable_timescale(NESynthNodeTable* node_table);
 
 NESynthIter* nesynth_iter_instruments(NESynth* synth);
 NESynthIter* nesynth_iter_songs(NESynth* synth);
