@@ -29,6 +29,17 @@ static void set_points(int item, void* pattern_id) {
     }
 }
 
+static void modify_pattern(int item, void* ptr_data) {
+    int data = (uintptr_t)ptr_data;
+    int pattern = (data >> 16) & 0xFFFF;
+    int channel = (data >>  0) & 0xFFFF;
+    switch (item) {
+        case 0:
+            nesynth_assign_pattern(state_list_channels()->items[channel].item, -1, pattern);
+            break;
+    }
+}
+
 void window_patterns(float w, float h) {
     int patterns = nesynth_song_get_length(state_song());
     int channels = nesynth_num_channels(state_song());
@@ -91,8 +102,8 @@ void window_patterns(float w, float h) {
     ui_subwindow(w - 128, h - 16);
         ui_setup_offset(true, true);
         curr_pos = 0;
-        for (int i = 0; i < channel_list->num_items; i++) {
-            NESynthChannel* channel = channel_list->items[i].item;
+        for (int c = 0; c < channel_list->num_items; c++) {
+            NESynthChannel* channel = channel_list->items[c].item;
             for (int i = 0; i < patterns; i++) {
                 int color = i % 2 ? 32 : 48;
                 ui_item(ui_zoom() * 160, fmodf(curr_pos + channel_height, 1) < 0.5 ? floorf(channel_height) : ceilf(channel_height));
@@ -107,6 +118,7 @@ void window_patterns(float w, float h) {
                         ui_draw_rectangle(AUTO, 0, AUTO, 16, color);
                         ui_draw_rectangle(AUTO, 16, AUTO, AUTO, faded);
                         ui_text_positioned(AUTO, 0, AUTO, 16, AUTO, AUTO, AUTO, AUTO, GRAY(0), "Pattern %d", id + 1);
+                        if (ui_right_clicked()) ui_menu("Delete\0Change Color\0", modify_pattern, (void*)(uintptr_t)(i << 16 | c));
                     }
                 ui_end();
             }

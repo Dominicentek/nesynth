@@ -11,7 +11,8 @@ fi
 ::printprogress() {
     WIDTH=20
     THRESHOLD=$((COUNTER * WIDTH / TASKS))
-    printf "\r\e[2K[$COUNTER/$TASKS] "
+    if [ "$PREV_MSG" != "" ]; then printf "\r\e[2K$PREV_MSG\n"; fi
+    printf "\e[2K[$COUNTER/$TASKS] "
     for i in $(seq 1 $WIDTH); do
         if [ $i -le $THRESHOLD ]; then
             echo -ne "#"
@@ -20,6 +21,7 @@ fi
         fi
     done
     echo -ne " $((COUNTER * 100 / TASKS))% $@"
+    PREV_MSG="$@"
 }
 
 ::setmsg() {

@@ -4,6 +4,7 @@
 #include "windows.h"
 #include "state.h"
 
+#include <SDL3/SDL_video.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -11,7 +12,7 @@ int main() {
     srand(time(NULL));
     SDL_Window* window;
     SDL_Renderer* renderer;
-    SDL_CreateWindowAndRenderer("NESynth", 1280, 720, 0, &window, &renderer);
+    SDL_CreateWindowAndRenderer("NESynth", 1280, 720, SDL_WINDOW_RESIZABLE, &window, &renderer);
     SDL_SetRenderVSync(renderer, 1);
     SDL_ShowWindow(window);
     state_init();

@@ -67,7 +67,7 @@ struct {
     { "Pitch",   "images/pitch.png",   get_pitch_text,   NESYNTH_NOTE(C, 0), NESYNTH_NOTE(C, 8) },
 };
 
-static void draw_line(int count, int color, float offset, float width) {
+static void draw_lines(int count, int color, float offset, float width) {
     for (int i = 1; i < count; i++) {
         ui_draw_line(width * i / count + offset, AUTO, AUTO, AUTO, color);
     }
@@ -444,11 +444,11 @@ void window_piano_roll(float w, float h) {
                 if (i >= patterns) break;
                 ui_draw_rectangle(i * width - 2, AUTO, 3, AUTO, GRAY(16));
                 if (ui_zoom() >= 0.25) {
-                    draw_line(4, GRAY(16), i * width, width);
+                    draw_lines(4, GRAY(16), i * width, width);
                     int num_lines = magnet;
                     if (ui_zoom() < 8 && num_lines > 32) num_lines = 32;
                     if (ui_zoom() < 4 && num_lines > 16) num_lines = 16;
-                    if (ui_zoom() >= 2) draw_line(num_lines * 4, GRAYA(16, 0.5), i * width, width);
+                    if (ui_zoom() >= 2) draw_lines(num_lines * 4, GRAYA(16, 0.5), i * width, width);
                 }
             }
             if (state.note_type != NESynthNoteType_Melodic) {

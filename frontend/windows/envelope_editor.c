@@ -8,14 +8,16 @@ static bool magnet_enabled = true;
 
 static void set_magnet(int index, void* data) {
     switch (index) {
-        case 0:  magnet = 1;    break;
-        case 1:  magnet = 2;    break;
-        case 2:  magnet = 4;    break;
-        case 3:  magnet = 6;    break;
-        case 4:  magnet = 8;    break;
-        case 5:  magnet = 16;   break;
-        case 6:  magnet = 32;   break;
-        case 7:  magnet = 64;   break;
+        case 0: magnet = 1;   break;
+        case 1: magnet = 2;   break;
+        case 2: magnet = 4;   break;
+        case 3: magnet = 6;   break;
+        case 4: magnet = 8;   break;
+        case 5: magnet = 16;  break;
+        case 6: magnet = 32;  break;
+        case 7: magnet = 64;  break;
+        case 8: magnet = 128; break;
+        case 9: magnet = 256; break;
     }
 }
 
@@ -23,9 +25,16 @@ static void set_timescale(int index, void* data) {
     *nesynth_nodetable_timescale(state_nodetable()) = index;
 }
 
+static void draw_lines(int count, int color, float offset, float width) {
+    for (int i = 1; i < count; i++) {
+        ui_draw_line(width * i / count + offset, AUTO, AUTO, AUTO, color);
+    }
+}
+
 void window_envelope_editor(float w, float h) {
     int num_values = state.note_type == NESynthNoteType_Volume ? 65 : 97;
     int padding = (h - 32 - num_values * 12) / 2;
+    if (padding < 0) padding = 0;
     ui_middleclick();
     ui_update_zoom(128);
     ui_limit_scroll(0, 0, NAN, num_values * 12 + 32);
@@ -44,7 +53,7 @@ void window_envelope_editor(float w, float h) {
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
             ui_image(magnet_enabled ? "images/magnet_on.png" : "images/magnet_off.png", 0, 0, 16, 16);
             if (ui_clicked()) magnet_enabled ^= 1;
-            if (ui_right_clicked()) ui_menu("1/1\0" "1/2\0" "1/4\0" "1/6\0" "1/8\0" "1/16\0" "1/32\0" "1/64\0", set_magnet, NULL);
+            if (ui_right_clicked()) ui_menu("1/1\0" "1/2\0" "1/4\0" "1/6\0" "1/8\0" "1/16\0" "1/32\0" "1/64\0" "1/128\0" "1/256\0", set_magnet, NULL);
         ui_end();
         ui_item(16, 16);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
@@ -55,7 +64,7 @@ void window_envelope_editor(float w, float h) {
     ui_subwindow(128, h - 32);
         ui_flow(UIFlow_LeftToRight);
         ui_setup_offset(false, true);
-        if (padding >= 0) {
+        if (padding > 0) {
             ui_item(128, padding);
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
             ui_end();
@@ -102,8 +111,22 @@ void window_envelope_editor(float w, float h) {
         }
     ui_end();
     ui_subwindow(w - 128, h - 32);
+        ui_setup_offset(false, false);
         ui_item(w - 128, h - 32);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
+            for (int i = 0; i < num_values; i++) {
+                int val = num_values - 1 - i;
+                if (i % 2 == 0) ui_draw_rectangle(AUTO, padding + i * 12 - *ui_scroll_y() - 1, AUTO, 12, GRAY(48));
+                if (i != 0 || padding != 0) ui_draw_line(AUTO, padding + i * 12 - *ui_scroll_y() - 1, AUTO, AUTO, GRAY(16));
+            }
+            ui_draw_line(AUTO, padding + num_values * 12 - *ui_scroll_y() - 1, AUTO, AUTO, GRAY(16));
+            for (int i = min; i <= max; i++) {
+                ui_draw_rectangle(i * width - *ui_scroll_x() - 2, AUTO, 3, AUTO, GRAY(16));
+                if (i == max) continue;
+                int lines = magnet;
+                while (ui_zoom() <= lines / 128.f)  lines /= 2;
+                draw_lines(lines, GRAY(16), i * width - *ui_scroll_x() - 1, width);
+            }
         ui_end();
     ui_end();
 }
