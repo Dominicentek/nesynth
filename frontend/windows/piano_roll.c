@@ -36,7 +36,7 @@ static char* format(const char* fmt, ...) {
     return str;
 }
 
-static char* get_instrument_text(float x) {
+static char* get_melodic_text(float x) {
     int octave = (x - NESYNTH_NOTE(C, 0)) / 12;
     int tone = roundf((x - NESYNTH_NOTE(C, 0)) - octave * 12);
     return format("%s%d", tones[tone], octave);
@@ -62,9 +62,9 @@ struct {
     char*(*get_text)(float x);
     int min, max;
 } note_type_table[] = {
-    { "Instrument", "images/instrument.png", get_instrument_text, NESYNTH_NOTE(C, 0), NESYNTH_NOTE(B, 8) },
-    { "Volume",     "images/volume.png",     get_volume_text,     NESYNTH_NOTE(C, 2), NESYNTH_NOTE(E, 7) },
-    { "Pitch",      "images/pitch.png",      get_pitch_text,      NESYNTH_NOTE(C, 0), NESYNTH_NOTE(C, 8) },
+    { "Melodic", "images/melodic.png", get_melodic_text, NESYNTH_NOTE(C, 0), NESYNTH_NOTE(B, 8) },
+    { "Volume",  "images/volume.png",  get_volume_text,  NESYNTH_NOTE(C, 2), NESYNTH_NOTE(E, 7) },
+    { "Pitch",   "images/pitch.png",   get_pitch_text,   NESYNTH_NOTE(C, 0), NESYNTH_NOTE(C, 8) },
 };
 
 static void draw_line(int count, int color, float offset, float width) {
@@ -317,7 +317,7 @@ static void draw_note(float width, float start, float end, float base, float sli
 
 static void draw_notes(float width, NoteProperties* notes, int num_notes, NESynthNote* selected, NESynthNoteType note_type, bool interactive, float value, char*(*get_text)(float x)) {
     for (int i = 0; i < num_notes; i++) {
-        int color = ui_interpolate_color(GRAY(0), state.note_type == NESynthNoteType_Instrument ? state_instrument_item(*nesynth_note_instrument(notes[i].note))->color : GRAY(224), value);
+        int color = ui_interpolate_color(GRAY(0), state.note_type == NESynthNoteType_Melodic ? state_instrument_item(*nesynth_note_instrument(notes[i].note))->color : GRAY(224), value);
         int base = *nesynth_base_note(notes[i].note);
         int slide = *nesynth_slide_note(notes[i].note);
         int pos = ui_mouse_x(UI_ItemRelative);
@@ -340,8 +340,8 @@ static void draw_notes(float width, NoteProperties* notes, int num_notes, NESynt
         }
         if (ui_right_clicked() && notes[i].note == selected) {
             char menu[] = "Delete\0Snap\0Toggle Slide\0Toggle Attack\0Make Instrument Current\0Replace with Current Instrument\0";
-            if (note_type != NESynthNoteType_Instrument) menu[25] = 0; // Toggle Slide\0Toggle Attack
-            ui_menu(menu, note_menu, selected); //                                      ^
+            if (note_type != NESynthNoteType_Melodic) menu[25] = 0; // Toggle Slide\0Toggle Attack
+            ui_menu(menu, note_menu, selected); //                                   ^
         }
     }
 }
@@ -371,7 +371,7 @@ void window_piano_roll(float w, float h) {
         ui_item(16, 16);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
             ui_image(note_type_table[state.note_type].image, 0, 0, 16, 16);
-            if (ui_clicked() || ui_right_clicked()) ui_menu("Instrument\0Volume\0Pitch\0", set_mode, NULL);
+            if (ui_clicked() || ui_right_clicked()) ui_menu("Melodic\0Volume\0Pitch\0", set_mode, NULL);
         ui_end();
     ui_end();
     float width = ui_zoom() * 160;
@@ -451,10 +451,10 @@ void window_piano_roll(float w, float h) {
                     if (ui_zoom() >= 2) draw_line(num_lines * 4, GRAYA(16, 0.5), i * width, width);
                 }
             }
-            if (state.note_type != NESynthNoteType_Instrument) {
+            if (state.note_type != NESynthNoteType_Melodic) {
                 int num_notes = 0;
-                NoteProperties* notes = get_notes(width, w - 128, &num_notes, NESynthNoteType_Instrument);
-                draw_notes(width, notes, num_notes, NULL, NESynthNoteType_Instrument, false, 0.5, get_instrument_text);
+                NoteProperties* notes = get_notes(width, w - 128, &num_notes, NESynthNoteType_Melodic);
+                draw_notes(width, notes, num_notes, NULL, NESynthNoteType_Melodic, false, 0.5, get_melodic_text);
                 free(notes);
             }
             draw_notes(width, notes, num_notes, hover, state.note_type, true, 1, note_type_table[state.note_type].get_text);

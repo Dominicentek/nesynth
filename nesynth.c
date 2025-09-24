@@ -354,7 +354,7 @@ NESynthInstrument* nesynth_get_instrument(NESynth* synth, int index) {
 void nesynth_delete_instrument(NESynthInstrument* instrument) {
     linkedlist_foreach(instrument->parent->songs, {
         linkedlist_foreach(((NESynthSong*)curr)->channels, {
-            linkedlist_foreach(((NESynthPattern*)curr)->notes[NESynthNoteType_Instrument], {
+            linkedlist_foreach(((NESynthPattern*)curr)->notes[NESynthNoteType_Melodic], {
                 if (((NESynthNote*)curr)->instrument == instrument) {
                     nesynth_destroy_note(curr);
                     linkedlist_delete();
@@ -956,7 +956,7 @@ void nesynth_get_samples(NESynth* synth, NESynthSample* samples, int num_samples
             NESynthPattern* pattern = channel->pattern_layout[pattern_index];
             if (!pattern) linkedlist_continue();
             float pitch = 0, mod_volume = 1, mod_pitch = 0;
-            NESynthNote* note = nesynth_get_note_value(channel, pattern, pattern_index, NESynthNoteType_Instrument, pos, &pitch, channel->type == NESynthChannelType_Noise);
+            NESynthNote* note = nesynth_get_note_value(channel, pattern, pattern_index, NESynthNoteType_Melodic, pos, &pitch, channel->type == NESynthChannelType_Noise);
             if (!note) linkedlist_continue();
             if (channel->state.prev_note != note && note->attack) {
                 channel->state.prev_note = note;

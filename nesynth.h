@@ -24,7 +24,7 @@ typedef enum {
 } NESynthChannelType;
 
 typedef enum {
-    NESynthNoteType_Instrument,
+    NESynthNoteType_Melodic,
     NESynthNoteType_Volume,
     NESynthNoteType_Pitch,
 } NESynthNoteType;
