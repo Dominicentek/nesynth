@@ -49,7 +49,7 @@ static char* get_volume_text(float x) {
 }
 
 static char* get_pitch_text(float x) {
-    int val = x - NESYNTH_NOTE(FS, 4);
+    int val = x - NESYNTH_NOTE(C, 4);
     if (val < -48 || val > 48) return NULL;
     if      (val < 0) return format("-%d", abs(val));
     else if (val > 0) return format("+%d", abs(val));
@@ -62,9 +62,9 @@ struct {
     char*(*get_text)(float x);
     int min, max;
 } note_type_table[] = {
-    { "Instrument", "images/instrument.png", get_instrument_text, NESYNTH_NOTE(C, 0),  NESYNTH_NOTE(B, 8)  },
-    { "Volume",     "images/volume.png",     get_volume_text,     NESYNTH_NOTE(C, 2),  NESYNTH_NOTE(E, 7)  },
-    { "Pitch",      "images/pitch.png",      get_pitch_text,      NESYNTH_NOTE(FS, 0), NESYNTH_NOTE(FS, 8) },
+    { "Instrument", "images/instrument.png", get_instrument_text, NESYNTH_NOTE(C, 0), NESYNTH_NOTE(B, 8) },
+    { "Volume",     "images/volume.png",     get_volume_text,     NESYNTH_NOTE(C, 2), NESYNTH_NOTE(E, 7) },
+    { "Pitch",      "images/pitch.png",      get_pitch_text,      NESYNTH_NOTE(C, 0), NESYNTH_NOTE(C, 8) },
 };
 
 static void draw_line(int count, int color, float offset, float width) {
