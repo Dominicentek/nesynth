@@ -63,7 +63,6 @@ void window_envelope_editor(float w, float h) {
         for (int i = 0; i < num_values; i++) {
             ui_item(128, 12);
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(false, true) ? GRAY(64) : GRAY(48));
-
                 if (state.note_type == NESynthNoteType_Volume)
                     ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 2, GRAY(255), "%d", 64 - i);
                 else {
