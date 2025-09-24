@@ -85,6 +85,7 @@ static UIWindowInfo *window_info, *window_info_head;
 static UIEvent *events, *events_head;
 static UIDrawList *drawlist, *drawlist_head;
 static SDL_Renderer* curr_renderer;
+static SDL_Window* curr_window;
 static uint64_t start_time;
 static char** curr_menu = NULL;
 static float menu_pos_x, menu_pos_y;
@@ -345,6 +346,7 @@ void ui_begin(SDL_Window* window, SDL_Renderer* renderer) {
     tiler_init(width, height);
     curr_node->tiler_id = ROOT_NODE;
     curr_renderer = renderer;
+    curr_window = window;
 }
 
 static void ui_split(float ratio, float offset, bool(*split_func)(int, float, float, int*, int*)) {
@@ -903,5 +905,9 @@ void ui_menu(const char* items, void(*on_select)(int index, void* data), void* d
     menu_data = data;
     menu_just_opened = true;
     curr_menu[num_items] = NULL;
+    int width, height;
     SDL_GetMouseState(&menu_pos_x, &menu_pos_y);
+    SDL_GetWindowSize(curr_window, &width, &height);
+    if (menu_pos_x + menu_width  >= width)  menu_pos_x -= menu_width;
+    if (menu_pos_y + menu_height >= height) menu_pos_y -= menu_height;
 }
