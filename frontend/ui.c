@@ -699,18 +699,18 @@ void ui_dragndrop(char* id) {
     }
     if (ui_clicked()) {
         curr_dragndrop = strdup(last_dragndrop);
-        dragndrop_pos_x = x - curr_node->x;
-        dragndrop_pos_y = y - curr_node->y;
+        dragndrop_pos_x = x;
+        dragndrop_pos_y = y;
     }
     else if (!ui_is_dragndropped()) return;
     UINode* window = curr_node;
     while (window->type != UINodeType_Window) window = window->parent;
     if (y < window->y             + 64) window->info->scroll_y -= 2;
     if (y > window->y + window->h - 64) window->info->scroll_y += 2;
-    curr_node->x = x - dragndrop_pos_x;
-    curr_node->y = y - dragndrop_pos_y;
-    curr_clip->rect.x = x - dragndrop_pos_x;
-    curr_clip->rect.y = y - dragndrop_pos_y;
+    curr_node->x += x - dragndrop_pos_x;
+    curr_node->y += y - dragndrop_pos_y;
+    curr_clip->rect.x += x - dragndrop_pos_x;
+    curr_clip->rect.y += y - dragndrop_pos_y;
     draw_priority = 1;
     UIDrawList* cmd = ui_push_drawlist(UIDrawType_SetClip);
     cmd->x = curr_clip->rect.x;

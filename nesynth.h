@@ -122,6 +122,7 @@ void nesynth_nodetable_remove(NESynthNodeTable* node_table, int index);
 float* nesynth_nodetable_loop_point(NESynthNodeTable* node_table);
 float* nesynth_nodetable_value(NESynthNodeTable* node_table, int index);
 float* nesynth_nodetable_slide(NESynthNodeTable* node_table, int index);
+float nesynth_nodetable_pos(NESynthNodeTable* node_table, int index);
 NESynthTimescale* nesynth_nodetable_timescale(NESynthNodeTable* node_table);
 
 NESynthIter* nesynth_iter_instruments(NESynth* synth);
@@ -129,7 +130,6 @@ NESynthIter* nesynth_iter_songs(NESynth* synth);
 NESynthIter* nesynth_iter_channels(NESynthSong* song);
 NESynthIter* nesynth_iter_patterns(NESynthChannel* channel);
 NESynthIter* nesynth_iter_notes(NESynthPattern* pattern, NESynthNoteType type);
-NESynthIter* nesynth_iter_nodes(NESynthNodeTable* node_table);
 bool nesynth_iter_next(NESynthIter* iter);
 void* nesynth_iter_get(NESynthIter* iter);
 

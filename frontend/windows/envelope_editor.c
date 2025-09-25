@@ -5,6 +5,7 @@
 
 static int magnet = 16;
 static bool magnet_enabled = true;
+static int right_click_index = -1;
 
 static void set_magnet(int index, void* data) {
     switch (index) {
@@ -25,14 +26,90 @@ static void set_timescale(int index, void* data) {
     *nesynth_nodetable_timescale(state_nodetable()) = index;
 }
 
+static void manage_node(int index, void* data) {
+    switch (index) {
+        case 0: // delete
+            nesynth_nodetable_remove(data, right_click_index);
+            break;
+    }
+}
+
 static void draw_lines(int count, int color, float offset, float width) {
     for (int i = 1; i < count; i++) {
         ui_draw_line(width * i / count + offset, AUTO, AUTO, AUTO, color);
     }
 }
 
+static int update_nodes(float width, NESynthNodeTable* nodetable, int padding, int min, int max, int multiplier) {
+    static int dragging = -1;
+    int count = nesynth_nodetable_num_nodes(nodetable);
+    int x = ui_mouse_x(UI_ItemRelative) + *ui_scroll_x();
+    int y = ui_mouse_y(UI_ItemRelative) + *ui_scroll_y() - padding;
+    int hover = -1;
+    for (int i = 0; i < count; i++) {
+        int pos = nesynth_nodetable_pos(nodetable, i) * width;
+        if (x >= pos && x < pos + 8) hover = i;
+    }
+    float pos = x / width;
+    float val = ceilf(max - (y / 12.f));
+    if (magnet_enabled) pos = floorf(x / width * magnet) / magnet;
+    if (val < min) val = min;
+    if (val > max) val = max;
+    val /= multiplier;
+    if (ui_clicked()) {
+        if (hover == -1) dragging = hover = nesynth_nodetable_insert(nodetable, pos, val);
+        else dragging = hover;
+    }
+    if (ui_right_clicked() && hover != -1) {
+        right_click_index = hover;
+        ui_menu("Delete\0Set Value\0Set Slide\0Set Position\0", manage_node, nodetable);
+    }
+    if (ui_mouse_down() && dragging != -1) {
+        float* value = nesynth_nodetable_value(nodetable, dragging);
+        float* slide = nesynth_nodetable_slide(nodetable, dragging);
+        if (*value == *slide) *value = *slide = val;
+        else *value = val;
+    }
+    else dragging = -1;
+    return hover;
+}
+
+static void draw_curve(float width, NESynthNodeTable* nodetable, int index, int padding, int max, int scale) {
+    float from = *nesynth_nodetable_value(nodetable, index);
+    float to   = *nesynth_nodetable_slide(nodetable, index);
+    float from_y = (max - from * scale) * 12 - *ui_scroll_y() + padding;
+    float to_y   = (max - to   * scale) * 12 - *ui_scroll_y() + padding;
+    float from_x = nesynth_nodetable_pos(nodetable, index + 0) * width - *ui_scroll_x() + 8;
+    float to_x   = nesynth_nodetable_pos(nodetable, index + 1) * width - *ui_scroll_x();
+    float length = to_x - from_x;
+    if (length <= 0) return;
+    switch ((to - from > 0) - (to - from < 0)) {
+        case -1: // from > to
+            ui_draw_rectangle(from_x, to_y, length, AUTO, GRAYA(224, 0.25));
+            ui_draw_triangle(from_x, from_y, from_x, to_y, to_x, to_y, GRAYA(224, 0.25));
+            break;
+        case 0: // from = to
+            ui_draw_rectangle(from_x, from_y, length, AUTO, GRAYA(224, 0.25));
+            break;
+        case 1: // from < to
+            ui_draw_rectangle(from_x, from_y, length, AUTO, GRAYA(224, 0.25));
+            ui_draw_triangle(from_x, from_y, to_x, from_y, to_x, to_y, GRAYA(224, 0.25));
+            break;
+    }
+}
+
+static void draw_node(float width, NESynthNodeTable* nodetable, int index, int padding, int max, int scale, bool hovered) {
+    int x = nesynth_nodetable_pos(nodetable, index) * width - *ui_scroll_x();
+    int y = (max - *nesynth_nodetable_value(nodetable, index) * scale) * 12 - *ui_scroll_y() + padding;
+    ui_draw_rectangle(x - 1, y - 1, 9, AUTO, hovered ? GRAY(224) : GRAY(16));
+    ui_draw_rectangle(x + 0, y + 0, 7, AUTO, GRAY(224));
+}
+
 void window_envelope_editor(float w, float h) {
     int num_values = state.note_type == NESynthNoteType_Volume ? 65 : 97;
+    int max_value  = state.note_type == NESynthNoteType_Volume ? 64 : 48;
+    int min_value  = state.note_type == NESynthNoteType_Volume ? 0 : -48;
+    int multiplier = state.note_type == NESynthNoteType_Volume ? 64 : 1;
     int padding = (h - 32 - num_values * 12) / 2;
     if (padding < 0) padding = 0;
     ui_middleclick();
@@ -72,10 +149,10 @@ void window_envelope_editor(float w, float h) {
         for (int i = 0; i < num_values; i++) {
             ui_item(128, 12);
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(false, true) ? GRAY(64) : GRAY(48));
+                int val = max_value - i;
                 if (state.note_type == NESynthNoteType_Volume)
-                    ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 2, GRAY(255), "%d", 64 - i);
+                    ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 2, GRAY(255), "%d", val);
                 else {
-                    int val = 48 - i;
                     const char* fmt = "0";
                     if (val > 0) fmt = "+%d";
                     if (val < 0) fmt = "-%d";
@@ -113,10 +190,12 @@ void window_envelope_editor(float w, float h) {
     ui_subwindow(w - 128, h - 32);
         ui_setup_offset(false, false);
         ui_item(w - 128, h - 32);
+            NESynthNodeTable* nodetable = state_nodetable();
+            int num_nodes = nesynth_nodetable_num_nodes(nodetable);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
             for (int i = 0; i < num_values; i++) {
                 int val = num_values - 1 - i;
-                if (i % 2 == 0) ui_draw_rectangle(AUTO, padding + i * 12 - *ui_scroll_y() - 1, AUTO, 12, GRAY(48));
+                if (i % 2 == 0) ui_draw_rectangle(0, padding + i * 12 - *ui_scroll_y() - 1, nesynth_nodetable_pos(nodetable, num_nodes - 1) * width - *ui_scroll_x(), 12, GRAY(48));
                 if (i != 0 || padding != 0) ui_draw_line(AUTO, padding + i * 12 - *ui_scroll_y() - 1, AUTO, AUTO, GRAY(16));
             }
             ui_draw_line(AUTO, padding + num_values * 12 - *ui_scroll_y() - 1, AUTO, AUTO, GRAY(16));
@@ -126,6 +205,13 @@ void window_envelope_editor(float w, float h) {
                 int lines = magnet;
                 while (ui_zoom() <= lines / 128.f)  lines /= 2;
                 draw_lines(lines, GRAY(16), i * width - *ui_scroll_x() - 1, width);
+            }
+            int hover = update_nodes(width, nodetable, padding, min_value, max_value, multiplier);
+            for (int i = 0; i < num_nodes - 1; i++) {
+                draw_curve(width, nodetable, i, padding, max_value, multiplier);
+            }
+            for (int i = 0; i < num_nodes; i++) {
+                draw_node(width, nodetable, i, padding, max_value, multiplier, hover == i);
             }
         ui_end();
     ui_end();
