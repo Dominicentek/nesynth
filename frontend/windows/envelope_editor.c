@@ -42,35 +42,46 @@ static void draw_lines(int count, int color, float offset, float width) {
 
 static int update_nodes(float width, NESynthNodeTable* nodetable, int padding, int min, int max, int multiplier) {
     static int dragging = -1;
+    static int sliding = -1;
     int count = nesynth_nodetable_num_nodes(nodetable);
     int x = ui_mouse_x(UI_ItemRelative) + *ui_scroll_x();
     int y = ui_mouse_y(UI_ItemRelative) + *ui_scroll_y() - padding;
-    int hover = -1;
-    for (int i = 0; i < count; i++) {
-        int pos = nesynth_nodetable_pos(nodetable, i) * width;
-        if (x >= pos && x < pos + 8) hover = i;
-    }
     float pos = x / width;
     float val = ceilf(max - (y / 12.f));
     if (magnet_enabled) pos = floorf(x / width * magnet) / magnet;
     if (val < min) val = min;
     if (val > max) val = max;
     val /= multiplier;
-    if (ui_clicked()) {
+    int hover = -1;
+    int last_node = -1;
+    for (int i = 0; i < count; i++) {
+        int pos = nesynth_nodetable_pos(nodetable, i) * width;
+        if (x >= pos && x < pos + 8) hover = i;
+        if (x > pos - 1 && i != count - 1) last_node = i;
+    }
+    if (ui_clicked() && !ui_right_mouse_down()) {
         if (hover == -1) dragging = hover = nesynth_nodetable_insert(nodetable, pos, val);
         else dragging = hover;
     }
-    if (ui_right_clicked() && hover != -1) {
-        right_click_index = hover;
-        ui_menu("Delete\0Set Value\0Set Slide\0Set Position\0", manage_node, nodetable);
+    if (ui_right_clicked() && !ui_mouse_down()) {
+        if (hover == -1) sliding = last_node;
+        else {
+            right_click_index = hover;
+            ui_menu("Delete\0Set Value\0Set Slide\0Set Position\0", manage_node, nodetable);
+        }
     }
     if (ui_mouse_down() && dragging != -1) {
         float* value = nesynth_nodetable_value(nodetable, dragging);
         float* slide = nesynth_nodetable_slide(nodetable, dragging);
-        if (*value == *slide) *value = *slide = val;
-        else *value = val;
+        float prev = *value;
+        *value = val;
+        *slide += *value - prev;
+        if (*slide < min) *slide = min;
+        if (*slide > max) *slide = max;
     }
     else dragging = -1;
+    if (ui_right_mouse_down() && sliding != -1) *nesynth_nodetable_slide(nodetable, sliding) = val;
+    else sliding = -1;
     return hover;
 }
 
@@ -212,6 +223,11 @@ void window_envelope_editor(float w, float h) {
             }
             for (int i = 0; i < num_nodes; i++) {
                 draw_node(width, nodetable, i, padding, max_value, multiplier, hover == i);
+            }
+            if (ui_mouse_down() || ui_right_mouse_down()) {
+                float mouse_y = ui_mouse_y(UI_ItemRelative);
+                if (mouse_y < 64) *ui_scroll_y() -= 4;
+                if (mouse_y >= h - 96) *ui_scroll_y() += 4;
             }
         ui_end();
     ui_end();

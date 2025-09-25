@@ -62,6 +62,7 @@ bool ui_hovered(bool x, bool y);
 bool ui_clicked();
 bool ui_right_clicked();
 bool ui_mouse_down();
+bool ui_right_mouse_down();
 float ui_zoom();
 float* ui_scroll_x();
 float* ui_scroll_y();

@@ -635,6 +635,10 @@ bool ui_mouse_down() {
     return SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK;
 }
 
+bool ui_right_mouse_down() {
+    return SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_RMASK;
+}
+
 float ui_zoom() {
     if (curr_node->type != UINodeType_Window && curr_node->type != UINodeType_Subwindow && curr_node->type != UINodeType_Item) return 0;
     return curr_node->info->zoom;
