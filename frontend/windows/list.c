@@ -8,11 +8,11 @@ void window_list(float w, float h, const char* title, List* list, int* selected,
     ui_limit_scroll(0, 0, 0, 16 + list->num_items * 16);
     ui_item(w - 16, 16);
         ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
-        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, GRAY(255), title);
+        ui_text_aligned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, 1, GRAY(255), title);
     ui_end();
     ui_item(16, 16);
         ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(true, true) ? GRAY(48) : GRAY(32));
-        ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "+");
+        ui_text_aligned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, 1, GRAY(255), "+");
         if (ui_clicked()) create_item();
     ui_end();
     ui_next();
@@ -31,8 +31,8 @@ void window_list(float w, float h, const char* title, List* list, int* selected,
                     state_move(list, i, new_i);
                 }
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, list->items[i].color);
-                if (i == *selected) ui_text(4, 4, GRAY(16), ">");
-                ui_text(16, 4, GRAY(16), list->items[i].name);
+                if (i == *selected) ui_text(4, 4, 1, GRAY(16), ">");
+                ui_text(16, 4, 1, GRAY(16), list->items[i].name);
             ui_end();
         }
         ui_item(w, h);

@@ -132,9 +132,9 @@ void window_envelope_editor(float w, float h) {
         ui_flow(UIFlow_LeftToRight);
         ui_item(112, 32);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
-            ui_text(4, 4, GRAY(255), state.note_type == NESynthNoteType_Volume ? "Volume" : "Pitch");
-            ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*0, magnet_enabled ? GRAY(255) : GRAY(64), "1/%d", magnet);
-            ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*1, GRAY(255), "%s", (char*[]){ "Seconds", "Beats" }[*nesynth_nodetable_timescale(state_nodetable())]);
+            ui_text(4, 4, 1, GRAY(255), state.note_type == NESynthNoteType_Volume ? "Volume" : "Pitch");
+            ui_text_aligned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*0, 1, magnet_enabled ? GRAY(255) : GRAY(64), "1/%d", magnet);
+            ui_text_aligned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*1, 1, GRAY(255), "%s", (char*[]){ "Seconds", "Beats" }[*nesynth_nodetable_timescale(state_nodetable())]);
         ui_end();
         ui_next();
         ui_item(16, 16);
@@ -162,12 +162,12 @@ void window_envelope_editor(float w, float h) {
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, ui_hovered(false, true) ? GRAY(64) : GRAY(48));
                 int val = max_value - i;
                 if (state.note_type == NESynthNoteType_Volume)
-                    ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 2, GRAY(255), "%d", val);
+                    ui_text_aligned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 2, 1, GRAY(255), "%d", val);
                 else {
                     const char* fmt = "0";
                     if (val > 0) fmt = "+%d";
                     if (val < 0) fmt = "-%d";
-                    ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 2, GRAY(255), fmt, abs(val));
+                    ui_text_aligned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 2, 1, GRAY(255), fmt, abs(val));
                 }
             ui_end();
         }
@@ -194,7 +194,7 @@ void window_envelope_editor(float w, float h) {
             }
             ui_item(width, 16);
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
-                ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(255), "%d", i + 1);
+                ui_text_aligned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, 1, GRAY(255), "%d", i + 1);
             ui_end();
         }
     ui_end();

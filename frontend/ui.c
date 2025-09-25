@@ -75,7 +75,7 @@ typedef struct UIDrawList {
     union { struct { int x, y; }; struct { int x1, y1; }; };
     union { struct { int w, h; }; struct { int x2, y2; }; };
     union { char* text; Image* image; struct { int x3, y3; }; };
-    union { int color, color_from; }; int color_to;
+    union { int color, color_from; }; union { int color_to; float scale; };
     int srcx, srcy, srcw, srch;
 } UIDrawList;
 
@@ -219,7 +219,7 @@ static UIDrawList** ui_sort_drawlist() {
     return list;
 }
 
-static void ui_render_text(float x, float y, int color, char* text) {
+static void ui_render_text(float x, float y, float scale, int color, char* text) {
     SDL_Texture* font = img_get_texture(curr_renderer, "images/font.png");
     SDL_SetTextureColorMod(font, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF);
     SDL_SetTextureAlphaMod(font, color & 0xFF);
@@ -229,9 +229,9 @@ static void ui_render_text(float x, float y, int color, char* text) {
         int Y = *text / 16 - 2;
         if (Y >= 0 && Y < 6) {
             SDL_FRect src = { .x = (int)(X * 6), .y = (int)(Y * 8), .w = 6, .h = 8 };
-            SDL_FRect dst = { .x = (int)(x + off), .y = (int)y, .w = 6, .h = 8 };
+            SDL_FRect dst = { .x = (int)(x + off), .y = (int)y, .w = 6 * scale, .h = 8 * scale };
             SDL_RenderTexture(curr_renderer, font, &src, &dst);
-            off += 6;
+            off += 6 * scale;
         }
         text++;
     }
@@ -300,7 +300,7 @@ static void ui_process_drawlist() {
                 );
                 break;
             case UIDrawType_Text:
-                ui_render_text(curr->x, curr->y, curr->color, curr->text);
+                ui_render_text(curr->x, curr->y, curr->scale, curr->color, curr->text);
                 free(curr->text);
                 break;
             case UIDrawType_SetClip:
@@ -412,7 +412,7 @@ static void ui_handle_menu() {
             ui_draw_rectangle(1, ptr * 10 + 1, menu_width - 2, 12, GRAY(128));
             if (clicked) (menu_func ? menu_func : ui_print_index)(ptr, menu_data);
         }
-        ui_text(3, ptr * 10 + 3, GRAY(255), "%s", curr_menu[ptr]);
+        ui_text(3, ptr * 10 + 3, 1, GRAY(255), "%s", curr_menu[ptr]);
         ptr++;
     }
     if (clicked) {
@@ -844,7 +844,7 @@ void ui_image_cropped(const char* path, float dx, float dy, float dw, float dh, 
     cmd->image = img;
 }
 
-void ui_text(float x, float y, int color, const char* fmt, ...) {
+void ui_text(float x, float y, float scale, int color, const char* fmt, ...) {
     va_list args1, args2;
     va_start(args1, fmt);
     va_copy(args2, args1);
@@ -858,9 +858,10 @@ void ui_text(float x, float y, int color, const char* fmt, ...) {
     cmd->y = y + curr_node->y;
     cmd->color = color;
     cmd->text = str;
+    cmd->scale = scale;
 }
 
-void ui_text_positioned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, int color, const char* fmt, ...) {
+void ui_text_aligned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, float scale, int color, const char* fmt, ...) {
     ui_resolve_auto(&x, &w, curr_node->w);
     ui_resolve_auto(&y, &h, curr_node->h);
     if (isnan(anchor_x)) anchor_x = 0.5;
@@ -875,13 +876,14 @@ void ui_text_positioned(float x, float y, float w, float h, float anchor_x, floa
     vsprintf(str, fmt, args2);
     va_end(args1);
     va_end(args2);
-    x += roundf((w - size * 6) * anchor_x + off_x);
-    y += roundf((h -        8) * anchor_y + off_y);
+    x += roundf((w - size * 6 * scale) * anchor_x + off_x);
+    y += roundf((h -        8 * scale) * anchor_y + off_y);
     UIDrawList* cmd = ui_push_drawlist(UIDrawType_Text);
     cmd->x = x + curr_node->x;
     cmd->y = y + curr_node->y;
     cmd->color = color;
     cmd->text = str;
+    cmd->scale = scale;
 }
 
 void ui_menu(const char* items, void(*on_select)(int index, void* data), void* data) {

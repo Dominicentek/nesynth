@@ -3,8 +3,8 @@
 #include "ui.h"
 #include "windows.h"
 #include "state.h"
+#include "audio.h"
 
-#include <SDL3/SDL_video.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -15,6 +15,7 @@ int main() {
     SDL_CreateWindowAndRenderer("NESynth", 1280, 720, SDL_WINDOW_RESIZABLE, &window, &renderer);
     SDL_SetRenderVSync(renderer, 1);
     SDL_ShowWindow(window);
+    audio_init(48000);
     state_init();
     while (1) {
         SDL_Event event;

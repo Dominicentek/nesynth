@@ -28,7 +28,7 @@ struct NESynth {
     NESynthLinkedList* songs;
     NESynthLinkedList* instruments;
     NESynthSong* curr_song;
-    float position;
+    float position, tempo;
     int sample_rate;
     bool fade, prev_fade;
     float fade_timer;
@@ -302,6 +302,7 @@ NESynth* nesynth_create(int sample_rate) {
     synth->sample_rate = sample_rate;
     synth->songs = linkedlist_create();
     synth->instruments = linkedlist_create();
+    synth->tempo = 1;
     return synth;
 }
 
@@ -313,8 +314,8 @@ void nesynth_destroy(NESynth* synth) {
     free(synth);
 }
 
-void nesynth_select_song(NESynth* synth, int song) {
-    synth->curr_song = linkedlist_index(synth->songs, song);
+void nesynth_select_song(NESynth* synth, NESynthSong* song) {
+    synth->curr_song = song;
     synth->position = 0;
 }
 
@@ -331,6 +332,18 @@ float nesynth_tell(NESynth* synth) {
 float nesynth_get_length(NESynth* synth) {
     if (!synth->curr_song) return 0;
     return synth->curr_song->length * 4 / (synth->curr_song->bpm / 60);
+}
+
+float* nesynth_tempo(NESynth* synth) {
+    return &synth->tempo;
+}
+
+float* nesynth_beat_position(NESynth* synth) {
+    return &synth->position;
+}
+
+float nesynth_get_num_beats(NESynth* synth){
+    return synth->curr_song ? synth->curr_song->length * 4 : 0;
 }
 
 int nesynth_num_instruments(NESynth* synth) {
@@ -873,7 +886,7 @@ NESynthSample* nesynthcmd_render(NESynthCmdFunc func, int sample_rate, int* num_
     if (num_samples) *num_samples = state.song->length * 4 / (state.song->bpm / 60) * sample_rate;
     if (loop_point)  *loop_point  = state.song->loop_point / (state.song->bpm / 60) * sample_rate;
     NESynthSample* samples = malloc(sizeof(NESynthSample) * *num_samples);
-    nesynth_select_song(synth, 0);
+    nesynth_select_song(synth, state.song);
     nesynth_get_samples(synth, samples, *num_samples, volume);
     nesynth_destroy(synth);
     return samples;
@@ -976,9 +989,10 @@ void nesynth_get_samples(NESynth* synth, NESynthSample* samples, int num_samples
             }
             nesynth_get_note_value(channel, pattern, pattern_index, NESynthNoteType_Volume, pos, &mod_volume, false);
             nesynth_get_note_value(channel, pattern, pattern_index, NESynthNoteType_Pitch,  pos, &mod_pitch,  false);
-            float seconds = fmaxf((synth->position - channel->state.attack) / synth->curr_song->bpm * 60, 0);
-            float instrument_volume = nesynth_compute_nodetable(note->instrument->volume, seconds);
-            float instrument_pitch  = nesynth_compute_nodetable(note->instrument->pitch,  seconds);
+            float beats = synth->position - channel->state.attack;
+            float seconds = fmaxf(beats / synth->curr_song->bpm * 60, 0);
+            float instrument_volume = nesynth_compute_nodetable(note->instrument->volume, note->instrument->volume->timescale == NESynthTimescale_Beats ? beats : seconds);
+            float instrument_pitch  = nesynth_compute_nodetable(note->instrument->pitch,  note->instrument->volume->timescale == NESynthTimescale_Beats ? beats : seconds);
             mod_volume *= instrument_volume;
             mod_pitch  += instrument_pitch;
             float freq = nesynth_midi2freq(pitch + mod_pitch, NULL);
@@ -1018,6 +1032,6 @@ void nesynth_get_samples(NESynth* synth, NESynthSample* samples, int num_samples
         if (sample < -1) sample = -1;
         if (sample >  1) sample =  1;
         samples[i] = sample * 32767;
-        synth->position += 1 / (60 / synth->curr_song->bpm * synth->sample_rate);
+        synth->position += synth->tempo / (60 / synth->curr_song->bpm * synth->sample_rate);
     }
 }

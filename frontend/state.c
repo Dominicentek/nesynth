@@ -42,7 +42,6 @@ static int state_list_add(List* list, void* item, const char* default_name) {
 }
 
 void state_init() {
-    state.synth = nesynth_create(48000);
     state_add_instrument();
     state_add_song();
 }
@@ -56,6 +55,7 @@ void state_add_song() {
     state.song = state_list_add(&songs, song, "Song %d");
     state.channel = state_list_add(state_list_channels(), nesynth_add_channel(song, NESynthChannelType_Square), NULL);
     *nesynth_song_bpm(song) = 120;
+    nesynth_select_song(state.synth, song);
 }
 
 void state_add_channel(NESynthChannelType type) {

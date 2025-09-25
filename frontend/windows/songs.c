@@ -15,5 +15,6 @@ void window_songs(float w, float h) {
     if (song != state.song) {
         state.note_type = NESynthNoteType_Melodic;
         state.channel = 0;
+        nesynth_select_song(state.synth, state_song());
     }
 }

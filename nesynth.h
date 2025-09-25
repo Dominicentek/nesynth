@@ -66,10 +66,13 @@ float nesynth_freq2midi(float freq, NESynthFreqMod freq_mod);
 
 NESynth* nesynth_create(int sample_rate);
 void nesynth_destroy(NESynth* synth);
-void nesynth_select_song(NESynth* synth, int song);
+void nesynth_select_song(NESynth* synth, NESynthSong* song);
 void nesynth_seek(NESynth* synth, float sec);
 float nesynth_tell(NESynth* synth);
 float nesynth_get_length(NESynth* synth);
+float* nesynth_tempo(NESynth* synth);
+float* nesynth_beat_position(NESynth* synth);
+float nesynth_get_num_beats(NESynth* synth);
 void nesynth_get_samples(NESynth* synth, NESynthSample* samples, int num_samples, float volume);
 
 int nesynth_num_instruments(NESynth* synth);

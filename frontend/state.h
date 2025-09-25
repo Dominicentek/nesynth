@@ -1,6 +1,8 @@
 #ifndef STATE_H
 #define STATE_H
 
+#include <stdbool.h>
+
 #include "nesynth.h"
 #include "windows/list.h"
 
@@ -10,6 +12,7 @@ extern struct {
     int instrument;
     int song;
     int channel;
+    bool playing;
 } state;
 
 extern List songs;

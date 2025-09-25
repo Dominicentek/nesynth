@@ -293,7 +293,7 @@ static void draw_note(float width, float start, float end, float base, float sli
     int display_note = roundf(isnan(override_note_text) ? base : override_note_text);
     if (w > 30) {
         char* text = get_text(display_note);
-        if (text) ui_text(x + 8, y + 2, secondary, "%s", text);
+        if (text) ui_text(x + 8, y + 2, 1, secondary, "%s", text);
         free(text);
     }
     if (w > 8) switch (type) {
@@ -357,8 +357,8 @@ void window_piano_roll(float w, float h) {
         ui_flow(UIFlow_LeftToRight);
         ui_item(112, 32);
             ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(32));
-            ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*0, magnet_enabled ? GRAY(255) : GRAY(64), "1/%d", magnet);
-            ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*1, GRAY(255), note_type_table[state.note_type].name, magnet
+            ui_text_aligned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*0, 1, magnet_enabled ? GRAY(255) : GRAY(64), "1/%d", magnet);
+            ui_text_aligned(AUTO, AUTO, AUTO, AUTO, 1, 0, -4, 4+16*1, 1, GRAY(255), note_type_table[state.note_type].name, magnet
         );
         ui_end();
         ui_next();
@@ -389,15 +389,15 @@ void window_piano_roll(float w, float h) {
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
                 if (ui_zoom() >= 1) {
                     for (int j = 0; j < 4; j++) {
-                        ui_text(width * (j / 4.f) + 2, 4, GRAY(255), "%d.%d", i + 1, j + 1);
+                        ui_text(width * (j / 4.f) + 2, 4, 1, GRAY(255), "%d.%d", i + 1, j + 1);
                     }
                 }
-                else ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, GRAY(255), "%d", i + 1);
+                else ui_text_aligned(AUTO, AUTO, AUTO, AUTO, 0.5, 0, 0, 4, 1, GRAY(255), "%d", i + 1);
             ui_end();
             ui_item(width, 16);
                 NESynthPattern* pattern = nesynth_any_pattern_at(state_channel(), i) ? nesynth_get_pattern_at(state_channel(), i) : NULL;
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, pattern ? state_pattern_item(pattern)->color : GRAY(color));
-                if (pattern) ui_text_positioned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, GRAY(16), "Pattern %d", nesynth_get_pattern_id(pattern) + 1);
+                if (pattern) ui_text_aligned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, 1, GRAY(16), "Pattern %d", nesynth_get_pattern_id(pattern) + 1);
             ui_end();
             ui_next();
         }
@@ -413,7 +413,7 @@ void window_piano_roll(float w, float h) {
                     int white = ui_hovered(false, true) ? 255 : 224;
                     int black = ui_hovered(false, true) ? 64 : 16;
                     ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(white));
-                    if (text) ui_text_positioned(AUTO, AUTO, AUTO, AUTO, 1, 0, -2, 2, GRAY(black), text);
+                    if (text) ui_text_aligned(AUTO, AUTO, AUTO, AUTO, 1, 0, -2, 2, 1, GRAY(black), text);
                     if (j % 2 == (j < 7)) ui_draw_rectangle(0, AUTO, 64, AUTO, GRAY(16));
                     free(text);
                 ui_end();
@@ -459,6 +459,7 @@ void window_piano_roll(float w, float h) {
             }
             draw_notes(width, notes, num_notes, hover, state.note_type, true, 1, note_type_table[state.note_type].get_text);
             free(notes);
+            ui_draw_rectangle(*nesynth_beat_position(state.synth) * width / 4 - 1, AUTO, 2, AUTO, RGB(255, 0, 0));
         ui_end();
     ui_end();
 }

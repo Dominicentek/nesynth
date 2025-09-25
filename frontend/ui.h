@@ -83,8 +83,8 @@ void ui_draw_line(float x1, float y1, float x2, float y2, int color);
 void ui_draw_triangle(float x1, float y1, float x2, float y2, float x3, float y3, int color);
 void ui_image(const char* img, float x, float y, float w, float h);
 void ui_image_cropped(const char* img, float dx, float dy, float dw, float dh, float sx, float sy, float sw, float sh);
-void ui_text(float x, float y, int color, const char* fmt, ...);
-void ui_text_positioned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, int color, const char* fmt, ...);
+void ui_text(float x, float y, float scale, int color, const char* fmt, ...);
+void ui_text_aligned(float x, float y, float w, float h, float anchor_x, float anchor_y, float off_x, float off_y, float scale, int color, const char* fmt, ...);
 
 void ui_menu(const char* items, void(*on_select)(int index, void* data), void* data);
 
