@@ -40,7 +40,7 @@ static void draw_lines(int count, int color, float offset, float width) {
     }
 }
 
-static int update_nodes(float width, NESynthNodeTable* nodetable, int padding, int min, int max, int multiplier) {
+static int update_nodes(float width, float win_h, NESynthNodeTable* nodetable, int padding, int min, int max, int multiplier) {
     static int dragging = -1;
     static int sliding = -1;
     int count = nesynth_nodetable_num_nodes(nodetable);
@@ -69,6 +69,11 @@ static int update_nodes(float width, NESynthNodeTable* nodetable, int padding, i
             right_click_index = hover;
             ui_menu("Delete\0Set Value\0Set Slide\0Set Position\0", manage_node, nodetable);
         }
+    }
+    if ((ui_mouse_down() && dragging != -1) || (ui_right_mouse_down() && sliding != -1)) {
+        float mouse_y = ui_mouse_y(UI_ItemRelative);
+        if (mouse_y < 64) *ui_scroll_y() -= 4;
+        if (mouse_y >= win_h - 96) *ui_scroll_y() += 4;
     }
     if (ui_mouse_down() && dragging != -1) {
         float* value = nesynth_nodetable_value(nodetable, dragging);
@@ -217,17 +222,12 @@ void window_envelope_editor(float w, float h) {
                 while (ui_zoom() <= lines / 128.f)  lines /= 2;
                 draw_lines(lines, GRAY(16), i * width - *ui_scroll_x() - 1, width);
             }
-            int hover = update_nodes(width, nodetable, padding, min_value, max_value, multiplier);
+            int hover = update_nodes(width, h, nodetable, padding, min_value, max_value, multiplier);
             for (int i = 0; i < num_nodes - 1; i++) {
                 draw_curve(width, nodetable, i, padding, max_value, multiplier);
             }
             for (int i = 0; i < num_nodes; i++) {
                 draw_node(width, nodetable, i, padding, max_value, multiplier, hover == i);
-            }
-            if (ui_mouse_down() || ui_right_mouse_down()) {
-                float mouse_y = ui_mouse_y(UI_ItemRelative);
-                if (mouse_y < 64) *ui_scroll_y() -= 4;
-                if (mouse_y >= h - 96) *ui_scroll_y() += 4;
             }
         ui_end();
     ui_end();
