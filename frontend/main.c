@@ -4,6 +4,7 @@
 #include "windows.h"
 #include "state.h"
 #include "audio.h"
+#include "shortcut.h"
 
 #include <stdlib.h>
 #include <time.h>
@@ -23,6 +24,7 @@ int main() {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) return 0;
             ui_process_event(&event);
+            update_shortcuts(&event);
         }
         ui_begin(window, renderer);
         ui_splith(0, 36);

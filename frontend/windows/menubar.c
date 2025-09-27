@@ -1,5 +1,6 @@
 #include "ui.h"
 
+#include "shortcut.h"
 #include "state.h"
 
 bool item(const char* tex, const char* menu, void(*callback)(int item, void* data)) {
@@ -17,26 +18,31 @@ static void menu_play(int index, void* data) {
     state.playing = true;
     float* pos = nesynth_beat_position(state.synth);
     switch (index) {
-        case 0: *pos = 0;                                          break; // play from start
-        case 1: *pos = floorf(*pos / 4) * 4;                       break; // play from pattern
-        case 2: *pos = *nesynth_song_loop_point(state_song()) * 4; break; // play from loop point
+        case 0: activate_shortcut(SHIFT + SPACE);        break; // play from start
+        case 1: activate_shortcut(CTRL + SPACE);         break; // play from pattern
+        case 2: activate_shortcut(CTRL + SHIFT + SPACE); break; // play from loop point
     }
 }
 
 static void menu_rewind(int index, void* data) {
+    activate_shortcut(CTRL + SHIFT + R);
     *nesynth_beat_position(state.synth) = floorf(*nesynth_beat_position(state.synth) / 4) * 4;
 }
 
+static void menu_save_as(int index, void* data) {
+    activate_shortcut(CTRL + SHIFT + S);
+}
+
 void window_menubar(float w, float h) {
-    item("images/new.png", NULL, NULL);
-    item("images/load.png", NULL, NULL);
-    item("images/save.png", "Save As\0", NULL);
-    item("images/export.png", NULL, NULL);
-    item("images/undo.png", NULL, NULL);
-    item("images/redo.png", NULL, NULL);
-    item("images/copy.png", NULL, NULL);
-    item("images/cut.png", NULL, NULL);
-    item("images/paste.png", NULL, NULL);
+    if (item("images/new.png", NULL, NULL))                 activate_shortcut(CTRL + N);
+    if (item("images/load.png", NULL, NULL))                activate_shortcut(CTRL + O);
+    if (item("images/save.png", "Save As\0", menu_save_as)) activate_shortcut(CTRL + S);
+    if (item("images/export.png", NULL, NULL))              activate_shortcut(CTRL + E);
+    if (item("images/undo.png", NULL, NULL))                activate_shortcut(CTRL + Z);
+    if (item("images/redo.png", NULL, NULL))                activate_shortcut(CTRL + Y);
+    if (item("images/copy.png", NULL, NULL))                activate_shortcut(CTRL + C);
+    if (item("images/cut.png", NULL, NULL))                 activate_shortcut(CTRL + X);
+    if (item("images/paste.png", NULL, NULL))               activate_shortcut(CTRL + V);
     ui_item(128, 36);
         float time = nesynth_tell(state.synth);
         int min = (int)floorf(time / 60);
@@ -54,7 +60,7 @@ void window_menubar(float w, float h) {
     if (item(
         state.playing ? "images/pause.png" : "images/play.png",
         state.playing ? NULL : "Play from Start\0Play from Pattern\0Play from Loop Point\0", menu_play
-    )) state.playing ^= 1;
+    )) activate_shortcut(SPACE);
     if (item("images/rewind.png", "Rewind to Pattern\0", menu_rewind))
-        *nesynth_beat_position(state.synth) = 0;
+        activate_shortcut(CTRL + R);
 }
