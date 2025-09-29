@@ -53,10 +53,6 @@ void window_menubar(float w, float h) {
         ui_text_aligned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, 2, 2, 2, GRAY(64), "%02d:%02d.%03d", min, sec, mil);
         ui_text_aligned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, 0, 0, 2, GRAY(224), "%02d:%02d.%03d", min, sec, mil);
     ui_end();
-    ui_item(128, 36);
-        ui_draw_rectangle(0, 0, 127, 35, GRAY(224));
-        ui_draw_rectangle(2, 2, 123, 31, GRAY(16));
-    ui_end();
     if (item(
         state.playing ? "images/pause.png" : "images/play.png",
         state.playing ? NULL : "Play from Start\0Play from Pattern\0Play from Loop Point\0", menu_play

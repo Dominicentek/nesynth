@@ -52,13 +52,13 @@ SHORTCUT(SPACE, // play
 )
 
 SHORTCUT(SHIFT + SPACE, // play from start
-    state.playing ^= 1;
-    if (state.playing) *nesynth_beat_position(state.synth) = 0;
+    state.playing = true;
+    *nesynth_beat_position(state.synth) = 0;
 )
 
 SHORTCUT(CTRL + SPACE, // play from pattern
-    state.playing ^= 1;
-    if (state.playing) *nesynth_beat_position(state.synth) = floorf(*nesynth_beat_position(state.synth) / 4) * 4;
+    state.playing = true;
+    *nesynth_beat_position(state.synth) = floorf(*nesynth_beat_position(state.synth) / 4) * 4;
 )
 
 SHORTCUT(CTRL + SHIFT + SPACE, // play from loop point
