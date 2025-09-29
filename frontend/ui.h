@@ -81,6 +81,7 @@ void ui_draw_gradienth(float x, float y, float w, float h, int from, int to);
 void ui_draw_gradientv(float x, float y, float w, float h, int from, int to);
 void ui_draw_line(float x1, float y1, float x2, float y2, int color);
 void ui_draw_triangle(float x1, float y1, float x2, float y2, float x3, float y3, int color);
+void ui_draw_mesh(int color, int num_verts, float* verts, int num_indices, int* indices);
 void ui_image(const char* img, float x, float y, float w, float h);
 void ui_image_cropped(const char* img, float dx, float dy, float dw, float dh, float sx, float sy, float sw, float sh);
 void ui_text(float x, float y, float scale, int color, const char* fmt, ...);

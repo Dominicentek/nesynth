@@ -40,6 +40,57 @@ static void modify_pattern(int item, void* ptr_data) {
     }
 }
 
+void draw_channel_type(NESynthChannelType type, float height) {
+    int noise_data[] = { 13, 12, 15, 1, 14, 12, 11, 11, 12, 10, 0, 10, 12, 15, 12, 7, 2, 14, 7, 6, 13, 14, 4, 14, 15, 11, 11, 5, 14, 4, 15, 0 };
+    int wavef_data[] = { 9, 2, 2, 14, 9, 6, 14, 4, 5, 13, 7, 3, 13, 11, 13, 4, 11, 2, 10, 12, 2, 2, 6, 6, 0, 1, 0, 13, 1, 9, 0, 0 };
+    switch (type) {
+        case NESynthChannelType_Square:
+            for (int i = 0; i < 4; i++) {
+                ui_draw_rectangle(i * 32 + 0, height - 6, 16, 2, GRAYA(255, 0.25));
+                ui_draw_rectangle(i * 32 + 16, height - 18, 2, 14, GRAYA(255, 0.25));
+                ui_draw_rectangle(i * 32 + 16, height - 20, 16, 2, GRAYA(255, 0.25));
+                ui_draw_rectangle(i * 32 + 32, height - 20, 2, 14, GRAYA(255, 0.25));
+            }
+            break;
+        case NESynthChannelType_Triangle:
+            for (int i = 0; i < 4; i++) {
+                ui_draw_mesh(GRAYA(255, 0.25), 6, (float[]){
+                    i * 32 + 0,  height - 4,
+                    i * 32 + 16, height - 19,
+                    i * 32 + 32, height - 4,
+                    i * 32 + 0,  height - 7,
+                    i * 32 + 16, height - 22,
+                    i * 32 + 32, height - 7,
+                }, 12, (int[]){
+                    0, 3, 4,
+                    0, 1, 4,
+                    2, 5, 4,
+                    2, 1, 4,
+                });
+            }
+            break;
+        case NESynthChannelType_Noise:
+            for (int i = 0; i < 32; i++) {
+                if (i != 0) {
+                    float from = noise_data[i - 1] + height - 20;
+                    float to = noise_data[i] + height - 20;
+                    if (to > from) to   += 2;
+                    else           from += 2;
+                    ui_draw_rectangle(i * 4 + 0, from, 2, to - from, GRAYA(255, 0.25));
+                }
+                float x = i * 4 + (i == 0 ? 0 : 2);
+                float w = i == 0 ? 4 : 2;
+                ui_draw_rectangle(x, noise_data[i] + height - 20, w, 2, GRAYA(255, 0.25));
+            }
+            break;
+        case NESynthChannelType_Waveform:
+            for (int i = 0; i < 32; i++) {
+                ui_draw_rectangle(i * 4, wavef_data[i] + height - 20, 3, 20, GRAYA(255, 0.25));
+            }
+            break;
+    }
+}
+
 void window_patterns(float w, float h) {
     int patterns = nesynth_song_get_length(state_song());
     int channels = nesynth_num_channels(state_song());
@@ -90,6 +141,7 @@ void window_patterns(float w, float h) {
                 }
                 int color = ui_hovered(false, true) && !ui_is_dragndropped() ? 64 : 32;
                 ui_draw_rectangle(AUTO, AUTO, AUTO, AUTO, GRAY(color));
+                draw_channel_type(nesynth_get_channel_type(channel), channel_height);
                 ui_text_aligned(AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, AUTO, 1, GRAY(255), "%s", channel_names[nesynth_get_channel_type(channel)]);
                 if (ui_clicked()) state_select_channel(channel);
                 if (ui_right_clicked()) ui_menu("Delete\0Rename\0Toggle Mute\0Toggle Solo\0Force Display in Piano Roll\0", channel_menu, channel);

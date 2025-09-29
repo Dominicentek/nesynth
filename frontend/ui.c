@@ -61,7 +61,7 @@ typedef enum {
     UIDrawType_GradientH,
     UIDrawType_GradientV,
     UIDrawType_Line,
-    UIDrawType_Triangle,
+    UIDrawType_Mesh,
     UIDrawType_Image,
     UIDrawType_Text,
     UIDrawType_SetClip,
@@ -73,10 +73,10 @@ typedef struct UIDrawList {
     UIDrawType type;
     int priority;
     union { struct { int x, y; }; struct { int x1, y1; }; };
-    union { struct { int w, h; }; struct { int x2, y2; }; };
-    union { char* text; Image* image; struct { int x3, y3; }; };
+    union { struct { int w, h; }; struct { int x2, y2; }; struct { int num_vertices, num_indices; }; };
+    union { char* text; Image* image; };
     union { int color, color_from; }; union { int color_to; float scale; };
-    int srcx, srcy, srcw, srch;
+    union { struct { int srcx, srcy, srcw, srch; }; struct { SDL_Vertex* vertices; int* indices; }; };
 } UIDrawList;
 
 static UINode* curr_node;
@@ -280,19 +280,10 @@ static void ui_process_drawlist() {
                 SDL_SetRenderDrawColor(curr_renderer, (curr->color >> 24) & 0xFF, (curr->color >> 16) & 0xFF, (curr->color >> 8) & 0xFF, curr->color & 0xFF);
                 SDL_RenderLine(curr_renderer, curr->x1, curr->y1, curr->x2, curr->y2);
                 break;
-            case UIDrawType_Triangle: {
-                SDL_FColor color = (SDL_FColor){
-                    .r = ((curr->color >> 24) & 0xFF) / 255.f,
-                    .g = ((curr->color >> 16) & 0xFF) / 255.f,
-                    .b = ((curr->color >>  8) & 0xFF) / 255.f,
-                    .a = ((curr->color >>  0) & 0xFF) / 255.f,
-                };
-                SDL_RenderGeometry(curr_renderer, NULL, (SDL_Vertex[]){
-                    { (SDL_FPoint){ curr->x1, curr->y1 }, color, (SDL_FPoint){ 0, 0 }},
-                    { (SDL_FPoint){ curr->x2, curr->y2 }, color, (SDL_FPoint){ 0, 0 }},
-                    { (SDL_FPoint){ curr->x3, curr->y3 }, color, (SDL_FPoint){ 0, 0 }},
-                }, 3, NULL, 0);
-            } break;
+            case UIDrawType_Mesh:
+                SDL_RenderGeometry(curr_renderer, NULL, curr->vertices, curr->num_vertices, curr->indices, curr->num_indices);
+                free(curr->vertices);
+                break;
             case UIDrawType_Image:
                 SDL_RenderTexture(curr_renderer, img_generate_texture(curr_renderer, curr->image),
                     RVAL_PTR((SDL_FRect){ .x = curr->srcx, .y = curr->srcy, .w = curr->srcw, .h = curr->srch }),
@@ -814,11 +805,27 @@ void ui_draw_line(float x1, float y1, float x2, float y2, int color) {
 }
 
 void ui_draw_triangle(float x1, float y1, float x2, float y2, float x3, float y3, int color) {
-    UIDrawList* cmd = ui_push_drawlist(UIDrawType_Triangle);
-    cmd->x1 = x1 + curr_node->x; cmd->y1 = y1 + curr_node->y;
-    cmd->x2 = x2 + curr_node->x; cmd->y2 = y2 + curr_node->y;
-    cmd->x3 = x3 + curr_node->x; cmd->y3 = y3 + curr_node->y;
-    cmd->color = color;
+    ui_draw_mesh(color, 3, (float[]){ x1, y1, x2, y2, x3, y3 }, 3, (int[]){ 0, 1, 2 });
+}
+
+void ui_draw_mesh(int color, int num_verts, float* verts, int num_indices, int* indices) {
+    UIDrawList* cmd = ui_push_drawlist(UIDrawType_Mesh);
+    SDL_FColor clr = (SDL_FColor){
+        .r = ((color >> 24) & 0xFF) / 255.f,
+        .g = ((color >> 16) & 0xFF) / 255.f,
+        .b = ((color >>  8) & 0xFF) / 255.f,
+        .a = ((color >>  0) & 0xFF) / 255.f,
+    };
+    cmd->num_vertices = num_verts;
+    cmd->vertices = malloc(sizeof(SDL_Vertex) * num_verts);
+    for (int i = 0; i < num_verts; i++) {
+        cmd->vertices[i] = (SDL_Vertex){ (SDL_FPoint){
+            verts[i * 2 + 0] + curr_node->x, verts[i * 2 + 1] + curr_node->y
+        }, clr, (SDL_FPoint){ 0, 0 }};
+    }
+    cmd->num_indices = num_indices;
+    cmd->indices = malloc(sizeof(int) * num_indices);
+    memcpy(cmd->indices, indices, sizeof(int) * num_indices);
 }
 
 void ui_image(const char* path, float x, float y, float w, float h) {
