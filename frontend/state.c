@@ -8,9 +8,6 @@
 
 typeof(state) state;
 
-List songs;
-List instruments;
-
 static void arrmove(void* arr, size_t from, size_t to, size_t size) {
     char item[size];
     memcpy(item, (char*)arr + size * from, size);
@@ -47,12 +44,12 @@ void state_init() {
 }
 
 void state_add_instrument() {
-    state.instrument = state_list_add(&instruments, nesynth_add_instrument(state.synth), "Instrument %d");
+    state.instrument = state_list_add(&state.instruments, nesynth_add_instrument(state.synth), "Instrument %d");
 }
 
 void state_add_song() {
     NESynthSong* song = nesynth_add_song(state.synth);
-    state.song = state_list_add(&songs, song, "Song %d");
+    state.song = state_list_add(&state.songs, song, "Song %d");
     state.channel = state_list_add(state_list_channels(), nesynth_add_channel(song, NESynthChannelType_Square), NULL);
     *nesynth_song_bpm(song) = 120;
     nesynth_select_song(state.synth, song);
@@ -92,12 +89,12 @@ static bool state_delete(List* list, int* curr, void* item) {
 }
 
 void state_delete_instrument(NESynthInstrument* instrument) {
-    if (state_delete(&instruments, &state.instrument, instrument))
+    if (state_delete(&state.instruments, &state.instrument, instrument))
         nesynth_delete_instrument(instrument);
 }
 
 void state_delete_song(NESynthSong* song) {
-    if (state_delete(&songs, &state.song, song))
+    if (state_delete(&state.songs, &state.song, song))
         nesynth_delete_song(song);
 }
 
@@ -116,15 +113,15 @@ void state_delete_pattern(NESynthPattern* pattern) {
 }
 
 NESynthInstrument* state_instrument() {
-    return instruments.items[state.instrument].item;
+    return state.instruments.items[state.instrument].item;
 }
 
 NESynthSong* state_song() {
-    return songs.items[state.song].item;
+    return state.songs.items[state.song].item;
 }
 
 NESynthChannel* state_channel() {
-    return songs.items[state.song].nested_list.items[state.channel].item;
+    return state.songs.items[state.song].nested_list.items[state.channel].item;
 }
 
 NESynthNodeTable* state_nodetable() {
@@ -136,11 +133,11 @@ NESynthNodeTable* state_nodetable() {
 }
 
 List* state_list_channels() {
-    return &songs.items[state.song].nested_list;
+    return &state.songs.items[state.song].nested_list;
 }
 
 List* state_list_patterns() {
-    return &songs.items[state.song].nested_list.items[state.channel].nested_list;
+    return &state.songs.items[state.song].nested_list.items[state.channel].nested_list;
 }
 
 static void select_item(List* list, void* item, int* index) {
@@ -160,11 +157,11 @@ static ListItem* get_item(List* list, void* item) {
 }
 
 void state_select_instrument(NESynthInstrument* instrument) {
-    select_item(&instruments, instrument, &state.instrument);
+    select_item(&state.instruments, instrument, &state.instrument);
 }
 
 void state_select_song(NESynthSong* song) {
-    select_item(&songs, song, &state.song);
+    select_item(&state.songs, song, &state.song);
 }
 
 void state_select_channel(NESynthChannel* channel) {
@@ -172,11 +169,11 @@ void state_select_channel(NESynthChannel* channel) {
 }
 
 ListItem* state_instrument_item(NESynthInstrument* instrument) {
-    return get_item(&instruments, instrument);
+    return get_item(&state.instruments, instrument);
 }
 
 ListItem* state_song_item(NESynthSong* song) {
-    return get_item(&songs, song);
+    return get_item(&state.songs, song);
 }
 
 ListItem* state_channel_item(NESynthChannel* channel) {

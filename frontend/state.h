@@ -13,10 +13,8 @@ extern struct {
     int song;
     int channel;
     bool playing;
+    List songs, instruments;
 } state;
-
-extern List songs;
-extern List instruments;
 
 void state_init();
 void state_add_instrument();

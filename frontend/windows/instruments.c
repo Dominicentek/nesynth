@@ -20,5 +20,5 @@ static void menu_handler(int index, void* data) {
 }
 
 void window_instruments(float w, float h) {
-    window_list(w, h, "Instruments", &instruments, &state.instrument, "Delete\0Rename\0Change Color\0Volume Envelopes\0Pitch Envelopes\0Upload Samples\0Tune Sample\0", menu_handler, state_add_instrument);
+    window_list(w, h, "Instruments", &state.instruments, &state.instrument, "Delete\0Rename\0Change Color\0Volume Envelopes\0Pitch Envelopes\0Upload Samples\0Tune Sample\0", menu_handler, state_add_instrument);
 }
